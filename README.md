@@ -172,13 +172,18 @@ what the numbers do and why.
 
 ## Deploying
 
-Both apps sit behind nginx on one VM, at `nibbles.ai.geco.asia` and
-`clarity.ai.geco.asia`. Configs are in `deploy/nginx/` and the full procedure
-is in `docs/deployment.md`.
+Both apps sit behind Nginx Proxy Manager on a shared VM, at
+`nibbles.ai.geco.asia` and `clarity.ai.geco.asia`. They join NPM's docker
+network and publish nothing externally. Proxy host settings are in
+`deploy/nginx-proxy-manager/README.md`, the full procedure in
+`docs/deployment.md`, and standalone nginx configs for a dedicated host in
+`deploy/nginx/`.
 
-Clarity has no authentication of its own and returns cost and margin figures,
-so the nginx block in front of it carries basic auth. Do not publish that
-hostname without it.
+Two proxy settings are not optional. The Advanced tab needs
+`proxy_buffering off`, because NPM otherwise buffers the reply into one
+delivery and streaming stops working with no error. And the Clarity host
+needs an Access List, because Clarity returns unit costs and gross margins
+and has no login of its own.
 
 ## Security
 

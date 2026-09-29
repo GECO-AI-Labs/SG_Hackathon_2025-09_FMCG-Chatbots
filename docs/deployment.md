@@ -131,57 +131,42 @@ clarity.ai.geco.asia.   A   <vm-ip>
 nibbles.ai.geco.asia.   A   <vm-ip>
 ```
 
-## Nginx
+## Reverse proxy
+
+This host runs Nginx Proxy Manager in docker (`proxy-app-1`), which owns
+ports 80, 81 and 443 and already fronts several other services. System nginx
+is therefore not used here and installing it would fail to bind.
+
+Both assistants join NPM's docker network and publish nothing externally, so
+NPM reaches them by container name. `127.0.0.1:5000` and `:5001` are still
+published for local curl checks, which is why NPM cannot use them: from
+inside its own container, loopback is itself.
+
+Full proxy host settings are in `deploy/nginx-proxy-manager/README.md`. Two
+of them are easy to miss and both break things quietly:
+
+- **Advanced tab** must carry `proxy_buffering off` and the rest. NPM buffers
+  by default, which collapses the stream into one delivery and removes
+  streaming without any error.
+- **Access List** on the Clarity host. Clarity returns unit costs and gross
+  margins and has no login of its own.
+
+`deploy/nginx/` holds standalone nginx configs for a future dedicated host.
+
+## Removing the previous version's images
+
+Other services share this host, so a blanket prune is not safe. Reclaim only
+what belonged to the old stack, roughly 640MB:
 
 ```bash
-sudo cp deploy/nginx/00-rate-limit.conf /etc/nginx/conf.d/
-sudo cp deploy/nginx/clarity.conf deploy/nginx/nibbles.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/clarity.conf /etc/nginx/sites-enabled/
-sudo ln -s /etc/nginx/sites-available/nibbles.conf /etc/nginx/sites-enabled/
-
-# Clarity needs a password. It reads cost and margin data.
-sudo apt install -y apache2-utils
-sudo htpasswd -c /etc/nginx/.htpasswd-clarity <username>
-
-sudo nginx -t && sudo systemctl reload nginx
+docker rm clarity nibbles
+docker image rm cashew/clarity:v1 cashew/nibbles:v1 clarity:v1 nibbles:v1
 ```
 
-### Why the proxy settings matter
-
-Nginx buffers proxied responses by default. Left on, it collects the entire
-answer and delivers it in one piece, which removes streaming completely and
-puts you back where the old version was. Three settings prevent that:
-
-- `proxy_buffering off` releases each chunk as it arrives
-- `proxy_read_timeout 3600s` stops nginx cutting a long answer off at 60s
-- `proxy_http_version 1.1` with an empty `Connection` header keeps the
-  connection open for the stream
-
-The apps also send `X-Accel-Buffering: no` on every stream, which nginx
-honours on its own. Both are in place because either one alone is a single
-point of failure.
-
-## TLS
-
-Both records are HTTP today. Nibbles collects names, emails and phone numbers
-through `/lead`, and Clarity returns costs and margins, so neither should stay
-on plain HTTP once the addresses are public.
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d nibbles.ai.geco.asia -d clarity.ai.geco.asia
-```
-
-Certbot rewrites the server blocks and adds the redirect. Afterwards set
-`COOKIE_SECURE=1` in `.env` and restart, so session cookies stop travelling in
-clear text:
-
-```bash
-docker compose up -d --force-recreate
-```
-
-Leave `COOKIE_SECURE=0` until TLS is live. On plain HTTP a secure cookie is
-dropped by the browser and sessions silently stop working.
+The two pairs of tags point at the same two image ids, so all four come off
+together. Do not run `docker image prune -af` here: it would also remove
+images belonging to other projects that have no container, such as the
+`caddy:2-alpine` used by the online payment bot.
 
 ## Running the containers
 

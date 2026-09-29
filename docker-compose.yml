@@ -1,21 +1,32 @@
 # Brings both assistants up against the same dataset.
-#   cp .env.example .env   (then fill in AZURE_API_KEY and AZURE_DEPLOYMENT)
-#   docker compose up --build
+#
+#   cp .env.example .env   (then fill AZURE_API_KEY and LLM_1_API_KEY)
+#   docker compose up -d --build
+#
+# This host already runs Nginx Proxy Manager, which owns ports 80, 81 and 443.
+# Both services therefore join NPM's docker network so it can reach them by
+# container name, and publish nothing to the outside world. See
+# docs/deployment.md for the proxy host settings, which are not optional:
+# NPM buffers responses by default and that silently disables streaming.
+
 services:
   clarity:
     build:
       context: .
       dockerfile: apps/clarity/Dockerfile
     image: cashew4nuts-clarity
-    container_name: clarity
+    container_name: cashew-clarity
     env_file: .env
     environment:
       DATA_DIR: /app/data/Team_Cashew_Synthetic_Data
     ports:
-      # Bound to loopback so the only way in is through nginx. Publishing on
-      # 0.0.0.0 would let anyone reach Clarity on <vm-ip>:5000 and skip the
-      # basic auth that protects the cost and margin data.
+      # Loopback only, for curl and healthz checks from the host itself.
+      # The proxy does not use this; it reaches the container over the shared
+      # network below. Nothing here is reachable from outside the VM.
       - "127.0.0.1:5000:5000"
+    networks:
+      - default
+      - proxy
     restart: unless-stopped
 
   nibbles:
@@ -23,19 +34,30 @@ services:
       context: .
       dockerfile: apps/nibbles/Dockerfile
     image: cashew4nuts-nibbles
-    container_name: nibbles
+    container_name: cashew-nibbles
     env_file: .env
     environment:
       DATA_DIR: /app/data/Team_Cashew_Synthetic_Data
       LEADS_FILE: /app/data/runtime/nibbles_leads.csv
     ports:
-      # Loopback only; nginx terminates the public connection.
       - "127.0.0.1:5001:5001"
     volumes:
-      # Captured leads survive a container rebuild. The host directory must
-      # be owned by uid 10001, the container's appuser, because a bind mount
+      # Captured leads survive a container rebuild. The host directory must be
+      # owned by uid 10001, the container's appuser, because a bind mount
       # adopts host ownership and overrides the chown done in the image:
       #   sudo chown -R 10001:10001 data/runtime
       # deploy/bootstrap-vm.sh does this for you.
       - ./data/runtime:/app/data/runtime
+    networks:
+      - default
+      - proxy
     restart: unless-stopped
+
+networks:
+  default:
+  proxy:
+    # The network Nginx Proxy Manager sits on. Confirm the name with:
+    #   docker inspect proxy-app-1 -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}'
+    # then set PROXY_NETWORK in .env if it differs from the default below.
+    external: true
+    name: ${PROXY_NETWORK:-proxy_default}
