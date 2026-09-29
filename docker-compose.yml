@@ -12,7 +12,10 @@ services:
     environment:
       DATA_DIR: /app/data/Team_Cashew_Synthetic_Data
     ports:
-      - "5000:5000"
+      # Bound to loopback so the only way in is through nginx. Publishing on
+      # 0.0.0.0 would let anyone reach Clarity on <vm-ip>:5000 and skip the
+      # basic auth that protects the cost and margin data.
+      - "127.0.0.1:5000:5000"
     restart: unless-stopped
 
   nibbles:
@@ -26,7 +29,8 @@ services:
       DATA_DIR: /app/data/Team_Cashew_Synthetic_Data
       LEADS_FILE: /app/data/runtime/nibbles_leads.csv
     ports:
-      - "5001:5001"
+      # Loopback only; nginx terminates the public connection.
+      - "127.0.0.1:5001:5001"
     volumes:
       # Captured leads survive a container rebuild.
       - ./data/runtime:/app/data/runtime
