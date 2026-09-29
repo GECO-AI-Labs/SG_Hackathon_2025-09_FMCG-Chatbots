@@ -98,6 +98,41 @@ curl -s -o /dev/null -w '%{http_code}\n' -u user:pass \
      https://clarity.ai.geco.asia/                                       # 200
 ```
 
+## Rate limiting
+
+Both endpoints are public and every request spends Azure tokens, so an
+unmetered endpoint is an open tab on the bill. A Clarity answer runs to
+roughly 4,700 tokens including reasoning.
+
+`limit_req_zone` has to be declared at the http level, which the per-host
+Advanced box cannot reach. NPM includes `/data/nginx/custom/http.conf`:
+
+```bash
+docker cp deploy/nginx-proxy-manager/http.conf \
+          proxy-app-1:/data/nginx/custom/http.conf
+docker restart proxy-app-1
+```
+
+Then add one line to each host's Advanced box, alongside the buffering
+settings:
+
+```nginx
+limit_req zone=cashew_chat burst=10 nodelay;
+```
+
+That allows 20 requests a minute per IP, bursting to 10. Comfortable for a
+person, useless for a script. Confirm it bites:
+
+```bash
+for i in $(seq 1 35); do
+  curl -s -o /dev/null -w '%{http_code} ' http://nibbles.ai.geco.asia/
+done; echo
+```
+
+A run of 200s followed by 503s is correct. All 200s means the zone is not
+wired up, usually because the container was not restarted after adding
+http.conf.
+
 ## Confirming streaming survived
 
 The failure is silent: the answer still arrives, just all at once.
