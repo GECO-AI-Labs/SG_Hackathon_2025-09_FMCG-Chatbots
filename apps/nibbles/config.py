@@ -8,7 +8,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 APP_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = APP_ROOT.parents[1]
+
+# In the repository this file sits at apps/<name>/config.py, so the project
+# root is two levels up. The Dockerfile copies apps/<name>/ to /app, which
+# flattens that away and leaves a path with no grandparent. Fall back to the
+# app directory there, which is what the container treats as its root.
+REPO_ROOT = (
+    APP_ROOT.parents[1] if len(APP_ROOT.parents) > 1 else APP_ROOT
+)
 
 
 def load_env() -> None:
