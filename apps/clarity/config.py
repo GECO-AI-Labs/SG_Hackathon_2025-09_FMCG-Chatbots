@@ -67,4 +67,9 @@ MAX_TOKENS = int(os.getenv("CLARITY_MAX_TOKENS", "4000"))
 
 # How many analyse-then-query rounds before the model must answer.
 MAX_TOOL_ROUNDS = int(os.getenv("CLARITY_MAX_TOOL_ROUNDS", "3"))
+
+# Parallel calls arrive wrapped in a multi_tool_use.parallel envelope. The
+# 13 pandas tools each return in milliseconds, so the round trip saved is
+# small and the envelope is one more thing that can arrive malformed.
+PARALLEL_TOOL_CALLS = os.getenv("CLARITY_PARALLEL_TOOL_CALLS", "0") == "1"
 HISTORY_TURNS = int(os.getenv("CLARITY_HISTORY_TURNS", "12"))

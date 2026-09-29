@@ -84,6 +84,16 @@ def run_tool(name: str, arguments: str) -> Dict[str, Any]:
         return {"error": f"{name} failed: {exc}"}
 
 
+def canonical_args(arguments: str) -> str:
+    """Key an argument string by meaning, so key order or spacing cannot hide
+    a repeat of a query that already ran this turn."""
+    try:
+        parsed = json.loads(arguments) if arguments and arguments.strip() else {}
+    except json.JSONDecodeError:
+        return (arguments or "").strip()
+    return json.dumps(parsed, sort_keys=True, default=str)
+
+
 def session_id() -> str:
     return request.cookies.get("clarity_sid") or secrets.token_hex(16)
 
@@ -98,21 +108,31 @@ def run_turn(user_message: str, history: List[Dict[str, Any]]) -> Iterator[str]:
     messages.append({"role": "user", "content": user_message})
 
     answer: List[str] = []
+    # Every query already run this turn, so a repeat costs nothing and the
+    # model gets told to use the result it already has.
+    seen_calls: set = set()
     started = time.time()
 
     try:
         for round_no in range(config.MAX_TOOL_ROUNDS + 1):
-            # On the final round the tools are withheld so the model has to
-            # answer with what it already has instead of looping forever.
+            # The tool schemas stay in the payload on every round, including
+            # the last. Dropping them while the conversation still carries
+            # function_call items leaves the model holding calls it has no way
+            # to express, and it writes the call syntax into the answer as
+            # plain text. tool_choice="none" forbids new calls and keeps the
+            # function namespace defined.
             final_round = round_no == config.MAX_TOOL_ROUNDS
-            tools = None if final_round else TOOL_SCHEMAS
+            tool_choice = "none" if final_round else "auto"
 
             chunk: List[str] = []
             tool_calls: List[Dict[str, Any]] = []
+            reasoning_items: List[Dict[str, Any]] = []
 
             for event in CLIENT.stream(
                 messages,
-                tools=tools,
+                tools=TOOL_SCHEMAS,
+                tool_choice=tool_choice,
+                parallel_tool_calls=config.PARALLEL_TOOL_CALLS,
                 temperature=config.TEMPERATURE,
                 max_tokens=config.MAX_TOKENS,
                 reasoning_effort=config.REASONING_EFFORT,
@@ -123,6 +143,7 @@ def run_turn(user_message: str, history: List[Dict[str, Any]]) -> Iterator[str]:
                     yield sse("delta", text=event["text"])
                 elif event["type"] == "tool":
                     tool_calls = event["calls"]
+                    reasoning_items = event.get("reasoning_items") or []
                 elif event["type"] == "usage":
                     yield sse("usage", usage=event["usage"])
 
@@ -139,6 +160,10 @@ def run_turn(user_message: str, history: List[Dict[str, Any]]) -> Iterator[str]:
                 "role": "assistant",
                 "content": "".join(chunk) or None,
                 "tool_calls": tool_calls,
+                # Handed back next round so the model keeps the plan it just
+                # made instead of re-deriving it and reissuing the same
+                # queries until the rounds run out.
+                "reasoning_items": reasoning_items,
             })
 
             for call in tool_calls:
@@ -147,7 +172,16 @@ def run_turn(user_message: str, history: List[Dict[str, Any]]) -> Iterator[str]:
                 raw_args = fn.get("arguments", "{}")
                 yield sse("tool", name=name, arguments=raw_args)
 
-                result = run_tool(name, raw_args)
+                key = (name, canonical_args(raw_args))
+                if key in seen_calls:
+                    result = {"error": (
+                        "Duplicate call. This exact query already ran earlier "
+                        "in this turn and its result is above. Use that "
+                        "result, or change the arguments."
+                    )}
+                else:
+                    seen_calls.add(key)
+                    result = run_tool(name, raw_args)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": call.get("id", ""),
@@ -174,7 +208,8 @@ def run_turn(user_message: str, history: List[Dict[str, Any]]) -> Iterator[str]:
             "and AZURE_DEPLOYMENT in your .env file."
         ))
     except LLMError as exc:
-        yield sse("error", message=f"The model endpoint did not respond: {exc}")
+        yield sse("retract")
+        yield sse("error", message=f"The model call failed: {exc}")
     except Exception as exc:                                   # noqa: BLE001
         yield sse("error", message=f"Unexpected failure: {exc}")
 

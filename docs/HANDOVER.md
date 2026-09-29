@@ -113,6 +113,19 @@ Each of these cost time. Do not rediscover them.
 7. **Network is blocked from the assistant's sandbox.** Azure and the VM are
    unreachable from there, so every live check has to be run by the user.
 
+8. **Never drop the tool schemas while `function_call` items are still in the
+   conversation.** Clarity's final round used to send `tools=None` to force an
+   answer. The model still had calls to make, had no namespace to express them
+   in, and wrote the raw call syntax (`to=functions.breakdown`,
+   `multi_tool_use.parallel`) into the answer, which streamed straight to the
+   commercial team. Use `tool_choice="none"` instead: it forbids new calls and
+   keeps the namespace defined.
+9. **Reasoning items must be replayed across tool rounds.** The Responses
+   stream returns them as separate items. Dropping them makes the model
+   re-plan from nothing every round and reissue the same queries until the
+   rounds run out, which is what exhausted them in the first place.
+   `deploy/check-tool-loop.py` covers both, offline, in about a second.
+
 ## Where work stopped
 
 HTTPS. Both hosts serve plain HTTP.

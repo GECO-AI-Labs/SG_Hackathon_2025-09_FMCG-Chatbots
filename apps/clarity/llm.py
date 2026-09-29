@@ -68,6 +68,10 @@ class ModelProfile:
     supports_top_p: bool = True
     supports_reasoning_effort: bool = False
     supports_verbosity: bool = False
+    supports_parallel_tool_calls: bool = True
+    # Stateless reasoning: ask the service to return reasoning items encrypted
+    # so the next tool round can replay them. Dropped if the service objects.
+    supports_encrypted_reasoning: bool = True
 
     @classmethod
     def for_model(cls, model: str) -> "ModelProfile":
@@ -94,7 +98,51 @@ _DROPPABLE = {
     "top_p": "supports_top_p",
     "reasoning_effort": "supports_reasoning_effort",
     "verbosity": "supports_verbosity",
+    "parallel_tool_calls": "supports_parallel_tool_calls",
+    "include": "supports_encrypted_reasoning",
+    "store": "supports_encrypted_reasoning",
 }
+
+
+# Text that should never reach a browser. These are the model's own transport
+# markers. When they show up in the answer channel the turn has already gone
+# wrong, so the turn is stopped rather than rendered.
+_LEAK_MARKERS = re.compile(
+    r"to=(?:functions?|multi_tool_use)\."
+    r"|multi_tool_use\.parallel"
+    r"|<\|(?:start|end|channel|message|constrain|return)\|>"
+    r"|\{\s*\"tool_uses\"\s*:",
+    re.IGNORECASE,
+)
+
+
+class _LeakGuard:
+    """Scans streamed text for transport markers before it is forwarded.
+
+    A marker can straddle two deltas, so a short tail is held back and
+    rechecked with the next one. The delay is a few dozen characters.
+    """
+
+    TAIL = 32
+
+    def __init__(self) -> None:
+        self._buf = ""
+
+    def feed(self, text: str) -> str:
+        self._buf += text
+        if _LEAK_MARKERS.search(self._buf):
+            raise LLMError(
+                "The model wrote raw tool-call syntax into its answer. The "
+                "turn was stopped before any of it reached the browser."
+            )
+        if len(self._buf) <= self.TAIL:
+            return ""
+        out, self._buf = self._buf[:-self.TAIL], self._buf[-self.TAIL:]
+        return out
+
+    def flush(self) -> str:
+        out, self._buf = self._buf, ""
+        return out
 
 
 # --------------------------------------------------------------------------
@@ -309,6 +357,14 @@ def to_responses_input(
                 "output": str(content or ""),
             })
         elif role == "assistant" and message.get("tool_calls"):
+            # Reasoning items are replayed ahead of the calls they produced.
+            # Without them the model re-plans from nothing on every round and
+            # reissues queries it has already run. Only an item carrying
+            # encrypted_content can be replayed by a stateless client; a bare
+            # id points at server-side state this client does not keep.
+            for item in message.get("reasoning_items") or []:
+                if item.get("encrypted_content"):
+                    items.append(item)
             if content:
                 items.append({"role": "assistant", "content": str(content)})
             for call in message["tool_calls"]:
@@ -388,6 +444,9 @@ class ChatClient:
         self.log = (
             log if log is not None else os.getenv("LLM_DEBUG", "1").strip() == "1"
         )
+        self.stateless_reasoning = (
+            os.getenv("LLM_STATELESS_REASONING", "1").strip() == "1"
+        )
         self._session = requests.Session()
 
     # -- plumbing --------------------------------------------------------
@@ -414,12 +473,14 @@ class ChatClient:
         tool_choice: Optional[str],
         reasoning_effort: Optional[str],
         verbosity: Optional[str],
+        parallel_tool_calls: Optional[bool] = None,
     ) -> Dict[str, Any]:
         if provider.protocol == "responses":
             return self._responses_payload(
                 provider, messages, stream=stream, temperature=temperature,
                 max_tokens=max_tokens, tools=tools, tool_choice=tool_choice,
                 reasoning_effort=reasoning_effort, verbosity=verbosity,
+                parallel_tool_calls=parallel_tool_calls,
             )
 
         profile = provider.profile
@@ -437,6 +498,9 @@ class ChatClient:
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = tool_choice or "auto"
+            if (parallel_tool_calls is not None
+                    and profile.supports_parallel_tool_calls):
+                payload["parallel_tool_calls"] = bool(parallel_tool_calls)
         return payload
 
     def _responses_payload(
@@ -451,6 +515,7 @@ class ChatClient:
         tool_choice: Optional[str],
         reasoning_effort: Optional[str],
         verbosity: Optional[str],
+        parallel_tool_calls: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Same request, expressed the way the Responses API wants it."""
         profile = provider.profile
@@ -473,6 +538,16 @@ class ChatClient:
         if tools:
             payload["tools"] = to_responses_tools(tools)
             payload["tool_choice"] = tool_choice or "auto"
+            if (parallel_tool_calls is not None
+                    and profile.supports_parallel_tool_calls):
+                payload["parallel_tool_calls"] = bool(parallel_tool_calls)
+        # Ask for reasoning back in encrypted form so the next round can replay
+        # it without the service holding state for this conversation.
+        if (self.stateless_reasoning
+                and profile.supports_reasoning_effort
+                and profile.supports_encrypted_reasoning):
+            payload["store"] = False
+            payload["include"] = ["reasoning.encrypted_content"]
         return payload
 
     def _repair(self, provider: Provider, body: str) -> bool:
@@ -526,6 +601,7 @@ class ChatClient:
         tool_choice: Optional[str] = None,
         reasoning_effort: Optional[str] = None,
         verbosity: Optional[str] = None,
+        parallel_tool_calls: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Non-streaming call. Returns the assistant message dict."""
         last: Optional[str] = None
@@ -544,6 +620,7 @@ class ChatClient:
                     tool_choice=tool_choice,
                     reasoning_effort=reasoning_effort,
                     verbosity=verbosity,
+                    parallel_tool_calls=parallel_tool_calls,
                 )
                 try:
                     resp = self._post(provider, payload, stream=False)
@@ -585,12 +662,14 @@ class ChatClient:
         tool_choice: Optional[str] = None,
         reasoning_effort: Optional[str] = None,
         verbosity: Optional[str] = None,
+        parallel_tool_calls: Optional[bool] = None,
     ) -> Iterator[Dict[str, Any]]:
         """Yield events as the model produces them.
 
         Event shapes:
           {"type": "text",  "text": str}          incremental answer text
-          {"type": "tool",  "calls": [...]}       assembled tool calls
+          {"type": "tool",  "calls": [...],        assembled tool calls
+                            "reasoning_items": [...]}  replay these next round
           {"type": "usage", "usage": {...}}       token counts when reported
           {"type": "end",   "reason": str}        finish reason
         """
@@ -610,6 +689,7 @@ class ChatClient:
                     tool_choice=tool_choice,
                     reasoning_effort=reasoning_effort,
                     verbosity=verbosity,
+                    parallel_tool_calls=parallel_tool_calls,
                 )
                 try:
                     resp = self._post(provider, payload, stream=True)
@@ -652,6 +732,7 @@ class ChatClient:
     @staticmethod
     def _read_stream(resp: requests.Response) -> Iterator[Dict[str, Any]]:
         pending: Dict[int, Dict[str, Any]] = {}
+        guard = _LeakGuard()
         reason = ""
 
         for raw in resp.iter_lines(decode_unicode=True):
@@ -682,7 +763,9 @@ class ChatClient:
 
             text = delta.get("content")
             if text:
-                yield {"type": "text", "text": text}
+                safe = guard.feed(text)
+                if safe:
+                    yield {"type": "text", "text": safe}
 
             for call in delta.get("tool_calls") or []:
                 slot = pending.setdefault(
@@ -701,6 +784,9 @@ class ChatClient:
             if choice.get("finish_reason"):
                 reason = choice["finish_reason"]
 
+        tail = guard.flush()
+        if tail:
+            yield {"type": "text", "text": tail}
         if pending:
             yield {"type": "tool", "calls": [pending[k] for k in sorted(pending)]}
         yield {"type": "end", "reason": reason}
@@ -739,6 +825,8 @@ class ChatClient:
         """
         pending: Dict[str, Dict[str, Any]] = {}
         order: List[str] = []
+        reasoning_items: List[Dict[str, Any]] = []
+        guard = _LeakGuard()
         reason = ""
 
         for raw in resp.iter_lines(decode_unicode=True):
@@ -761,7 +849,9 @@ class ChatClient:
             if kind == "response.output_text.delta":
                 text = chunk.get("delta") or ""
                 if text:
-                    yield {"type": "text", "text": text}
+                    safe = guard.feed(text)
+                    if safe:
+                        yield {"type": "text", "text": safe}
 
             elif kind == "response.output_item.added":
                 item = chunk.get("item") or {}
@@ -787,7 +877,10 @@ class ChatClient:
 
             elif kind == "response.output_item.done":
                 item = chunk.get("item") or {}
-                if item.get("type") == "function_call":
+                if item.get("type") == "reasoning":
+                    # Kept so the caller can hand it back next round.
+                    reasoning_items.append(item)
+                elif item.get("type") == "function_call":
                     key = item.get("id") or item.get("call_id")
                     if key in pending:
                         pending[key]["id"] = item.get("call_id") or pending[key]["id"]
@@ -808,6 +901,13 @@ class ChatClient:
                 detail = (body.get("error") or {}).get("message") or str(body)[:300]
                 raise LLMError(f"Responses API error: {detail}")
 
+        tail = guard.flush()
+        if tail:
+            yield {"type": "text", "text": tail}
         if pending:
-            yield {"type": "tool", "calls": [pending[k] for k in order if k in pending]}
+            yield {
+                "type": "tool",
+                "calls": [pending[k] for k in order if k in pending],
+                "reasoning_items": reasoning_items,
+            }
         yield {"type": "end", "reason": reason}
