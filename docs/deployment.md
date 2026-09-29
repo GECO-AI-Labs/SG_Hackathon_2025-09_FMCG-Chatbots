@@ -24,6 +24,8 @@ docker compose down --remove-orphans
 docker images                      # note the old image ids
 docker image prune -af             # removes anything no longer referenced
 
+# 2b. See "Removing the old images" below for the scoped version.
+
 # 3. Move the old directory aside. Keep it until the new stack is proven.
 cd /data && sudo mv cashew-chatbot cashew-chatbot.old-$(date +%F)
 
@@ -57,6 +59,53 @@ sudo chown 10001:10001 data/runtime/nibbles_leads.csv
 Delete `cashew-chatbot.old-*` and the old `llm.env` only after the new stack
 has served traffic. That old env file holds a live key, so remove it rather
 than leaving it on disk.
+
+### Removing the old images
+
+Check what else uses this host before reaching for a blanket prune. A shared
+VM will have images belonging to other services, and an unused image there is
+still one somebody wants.
+
+```bash
+docker ps -a          # anything else running or stopped
+docker images         # what is on disk
+docker volume ls      # named volumes, which may hold another service's data
+docker system df      # how much is actually reclaimable
+```
+
+**Scoped.** Run this from the *old* directory so its compose file names
+exactly the images it created. This is the right option on a shared host.
+
+```bash
+cd /data/cashew-chatbot
+docker compose down --remove-orphans --rmi all
+```
+
+The first version side-loaded images from `.tar` files, so some may not be
+referenced by that compose file. Remove those by name:
+
+```bash
+docker images | grep -Ei 'clarity|nibbles'
+docker image rm <image-id> [<image-id> ...]
+```
+
+**Everything.** Only on a host dedicated to these two apps. It removes every
+stopped container, unused image, unused network and the build cache.
+
+```bash
+docker system prune -af
+docker builder prune -af
+```
+
+Adding `--volumes` also destroys named volumes. Nothing here uses one, so it
+buys you nothing and can delete another service's database. Leave it off.
+
+**Afterwards.** Rebuilds leave dangling layers behind over time:
+
+```bash
+docker image prune -f     # dangling only, safe to run regularly
+docker system df          # confirm the space came back
+```
 
 ### What changed that affects the host
 
