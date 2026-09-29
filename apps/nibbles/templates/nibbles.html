@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat with {{ company }}</title>
+<style>
+  :root{
+    --tan:#b9ad95; --tan-d:#a8987d; --bg:#d8d1bf; --ink:#2a261f;
+    --muted:#6f6657; --card:#f7f4ed; --line:#e4e0d8; --user:#e9e3d8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;min-height:100vh;background:var(--bg);color:var(--ink);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,
+    "Apple Color Emoji","Segoe UI Emoji";
+    display:flex;align-items:center;justify-content:center;position:relative}
+  .logo{position:absolute;top:28px;left:28px}
+  .logo img{max-height:52px;width:auto}
+  .chat{width:min(760px,94vw);height:min(90vh,780px);background:#fff;border-radius:20px;
+    box-shadow:0 10px 36px rgba(0,0,0,.10);display:flex;flex-direction:column;
+    overflow:hidden;border:1px solid #eee}
+  .header{background:var(--tan);color:#fff;padding:16px 18px}
+  .header h1{margin:0;font-size:16px;font-weight:700}
+  .header .sub{margin-top:4px;font-size:12px;opacity:.95}
+  .messages{flex:1;overflow-y:auto;padding:16px 16px 4px}
+  .msg{max-width:86%;padding:10px 13px;margin:0 0 12px;border-radius:14px;
+    font-size:14.5px;box-shadow:0 1px 0 rgba(0,0,0,.04);white-space:pre-wrap;
+    overflow-wrap:anywhere}
+  .msg.bot{background:var(--card);border:1px solid var(--line)}
+  .msg.user{background:var(--user);margin-left:auto}
+  .msg.err{background:#fdf0ef;border:1px solid #e6b5ae;color:#8a3025}
+  .cursor::after{content:"▍";color:var(--tan-d);animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .cards{display:flex;gap:10px;overflow-x:auto;padding:2px 0 12px;margin:0 0 6px}
+  .card{min-width:190px;max-width:190px;background:var(--card);border:1px solid var(--line);
+    border-radius:13px;padding:11px 12px}
+  .card .name{font-weight:650;font-size:13.5px;line-height:1.35}
+  .card .meta{color:var(--muted);font-size:11.5px;margin-top:3px}
+  .card .price{margin-top:7px;font-weight:700;font-size:14px;color:#6b5c3f}
+  .card .tag{display:inline-block;margin:6px 4px 0 0;padding:2px 8px;border-radius:999px;
+    background:#efe9dc;border:1px solid #ded5c4;font-size:10.5px;color:#6b5c3f}
+  .card .allergen{color:#8a3025;background:#fdf0ef;border-color:#e6b5ae}
+  .label{font-size:11.5px;color:var(--muted);margin:2px 0 6px;letter-spacing:.3px;
+    text-transform:uppercase}
+
+  .footer{padding:12px;background:#fff;border-top:1px solid #eee;display:flex;gap:8px}
+  input[type=text]{flex:1;border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;font:inherit;outline:none}
+  input[type=text]:focus{border-color:var(--tan-d)}
+  button{background:var(--tan-d);color:#fff;border:0;border-radius:12px;padding:0 18px;
+    font-weight:700;cursor:pointer;font-size:14px}
+  button:disabled{opacity:.5;cursor:not-allowed}
+</style>
+</head>
+<body>
+  <div class="logo"><img src="/static/logo.png" alt=""></div>
+  <div class="chat">
+    <div class="header">
+      <h1>Chat with {{ company }}</h1>
+      <div class="sub">We reply 8am to 5pm Singapore time. Ask about any product, price or pack size.</div>
+    </div>
+    <div class="messages" id="messages">
+      <div class="msg bot">Hi, I'm Nibbles. Ask me about anything in our range, like "roasted peanuts 150g" or "什么腰果有蜂蜜口味", and I'll find it for you.</div>
+    </div>
+    <div class="footer">
+      <input id="box" type="text" placeholder="Enter your message..." autofocus>
+      <button id="send">Send</button>
+    </div>
+  </div>
+
+<script>
+const msgs=document.getElementById('messages'), box=document.getElementById('box'),
+      send=document.getElementById('send');
+let busy=false;
+const scroll=()=>{msgs.scrollTop=msgs.scrollHeight;};
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function addUser(text){
+  const el=document.createElement('div');
+  el.className='msg user'; el.textContent=text;
+  msgs.appendChild(el); scroll();
+}
+
+function addBot(){
+  const el=document.createElement('div'); el.className='msg bot cursor';
+  msgs.appendChild(el); scroll(); return el;
+}
+
+function addCards(items, label){
+  const wrap=document.createElement('div');
+  if(label){ const l=document.createElement('div'); l.className='label';
+             l.textContent=label; wrap.appendChild(l); }
+  const row=document.createElement('div'); row.className='cards';
+  for(const it of items){
+    const card=document.createElement('div'); card.className='card';
+    const size = it.grams ? (it.grams + 'g') : '';
+    const bits = [it.category, size].filter(Boolean).join(' · ');
+    let tags='';
+    (it.dietary_tags||'').split(',').filter(Boolean).slice(0,2)
+      .forEach(t => tags += `<span class="tag">${escapeHtml(t.trim())}</span>`);
+    (it.allergen_tags||'').split(',').filter(Boolean).slice(0,1)
+      .forEach(t => tags += `<span class="tag allergen">${escapeHtml(t.trim().replace(/_/g,' '))}</span>`);
+    card.innerHTML =
+      `<div class="name">${escapeHtml(it.name)}</div>`+
+      `<div class="meta">${escapeHtml(bits)}</div>`+
+      `<div class="price">${escapeHtml(it.price_display||'')}</div>`+
+      `<div>${tags}</div>`;
+    row.appendChild(card);
+  }
+  wrap.appendChild(row); msgs.appendChild(wrap); scroll();
+}
+
+function getSID(){
+  try{
+    let sid=localStorage.getItem('nibbles_sid');
+    if(!sid){ sid = (crypto && crypto.randomUUID) ? crypto.randomUUID()
+                  : String(Date.now())+Math.random().toString(16).slice(2);
+              localStorage.setItem('nibbles_sid', sid); }
+    return sid;
+  }catch(e){ return 'sid-'+Date.now(); }
+}
+
+async function ask(text){
+  if(busy || !text.trim()) return;
+  busy=true; send.disabled=true;
+  addUser(text); box.value='';
+  let bot=null;
+
+  try{
+    const res=await fetch('/chat',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text, sid:getSID()})
+    });
+    if(!res.ok || !res.body) throw new Error('Sorry, something went wrong.');
+
+    const reader=res.body.getReader(), dec=new TextDecoder();
+    let buffer='';
+    while(true){
+      const {value, done}=await reader.read();
+      if(done) break;
+      buffer+=dec.decode(value,{stream:true});
+      const parts=buffer.split('\n\n'); buffer=parts.pop();
+      for(const part of parts){
+        const line=part.split('\n').find(l=>l.startsWith('data:'));
+        if(!line) continue;
+        let ev; try{ ev=JSON.parse(line.slice(5).trim()); }catch(e){ continue; }
+
+        if(ev.type==='items'){ addCards(ev.items); }
+        else if(ev.type==='delta'){
+          if(!bot) bot=addBot();
+          bot.textContent += ev.text; scroll();
+        }
+        else if(ev.type==='suggestions'){ addCards(ev.items, 'You may also like'); }
+        else if(ev.type==='done'){ if(bot) bot.classList.remove('cursor'); }
+      }
+    }
+  }catch(err){
+    const el=document.createElement('div');
+    el.className='msg err'; el.textContent=err.message||'Network error. Please try again.';
+    msgs.appendChild(el);
+  }finally{
+    if(bot) bot.classList.remove('cursor');
+    busy=false; send.disabled=false; box.focus(); scroll();
+  }
+}
+
+send.addEventListener('click',()=>ask(box.value));
+box.addEventListener('keydown',e=>{ if(e.key==='Enter') ask(box.value); });
+</script>
+</body>
+</html>

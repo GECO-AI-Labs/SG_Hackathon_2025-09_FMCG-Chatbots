@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clarity - Staff Assistant</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --card:#111827; --acc:#22d3ee; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--fg); position: relative; }  /* For absolute logo */
+    /* Global Top-Left Logo */
+    .global-logo {
+      position: absolute;
+      top: 32px;
+      left: 32px;
+      z-index: 10;  /* Above other elements */
+    }
+    .global-logo img {
+      max-height: 60px;  /* Adjustable size */
+      width: auto;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .brand { font-weight: 800; letter-spacing: 0.3px; font-size: 22px; margin-bottom: 12px; }
+    .card { background: var(--card); border: 1px solid #1f2937; border-radius: 16px; padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+    .log { height: 60vh; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:8px; }
+    .msg { padding:12px 14px; border-radius: 14px; line-height: 1.6; }
+    .user { background:#0b1324; align-self:flex-end; }
+    .bot  { background:#0b1f2a; border:1px solid #1e293b; }
+    .sys  { color:var(--muted); font-style: italic; }
+    .row { display:flex; gap:8px; margin-top:12px; }
+    textarea { flex:1; background:#0b1324; color:var(--fg); border:1px solid #1f2937; border-radius:12px; padding:10px; resize: vertical; min-height: 44px; }
+    button { background:var(--acc); color:#001018; border:0; font-weight:700; padding:10px 14px; border-radius: 12px; cursor:pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .small { color:var(--muted); font-size:12px; }
+    
+    /* Markdown content styling */
+    .msg.bot h1, .msg.bot h2, .msg.bot h3, .msg.bot h4 { margin: 0.8em 0 0.4em 0; color: var(--acc); }
+    .msg.bot h1 { font-size: 1.3em; }
+    .msg.bot h2 { font-size: 1.15em; }
+    .msg.bot h3 { font-size: 1.05em; }
+    .msg.bot p { margin: 0.5em 0; }
+    .msg.bot ul, .msg.bot ol { margin: 0.5em 0; padding-left: 1.5em; }
+    .msg.bot li { margin: 0.3em 0; }
+    .msg.bot strong { color: #fff; }
+    .msg.bot table { border-collapse: collapse; margin: 0.8em 0; width: 100%; font-size: 0.9em; }
+    .msg.bot th, .msg.bot td { border: 1px solid #334155; padding: 8px 10px; text-align: left; }
+    .msg.bot th { background: #1e293b; color: var(--acc); font-weight: 600; }
+    .msg.bot tr:nth-child(even) { background: rgba(30,41,59,0.5); }
+    .msg.bot code { background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    .msg.bot pre { background: #1e293b; padding: 12px; border-radius: 8px; overflow-x: auto; }
+    .msg.bot pre code { background: none; padding: 0; }
+    .msg.bot blockquote { border-left: 3px solid var(--acc); margin: 0.5em 0; padding-left: 1em; color: var(--muted); }
+    /* README styles */
+    .readme { background: #1e293b; padding: 10px; margin: 10px 0; border-radius: 8px; font-size: 14px; color: #e2e8f0; }
+    .readme ul { margin: 0; padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <!-- Global Top-Left Logo (outside chatbot) -->
+  <div class="global-logo">
+    <img src="/logo.png" alt="GECO Asia Logo">
+  </div>
+  <div class="wrap">
+    <div class="brand">Clarity — Staff Assistant</div>
+    <div class="card">
+      <!-- Brief README Instructions -->
+      <div class="readme">
+        <strong>How to Use This Staff Chatbot:</strong>
+        <ul>
+          <li>Type your question about sales trends, SKU performance, or operations in the box below (e.g., "Sales trends for Q4").</li>
+          <li>Press "Send" or Ctrl+Enter to get insights.</li>
+          <li>For best results, be specific—I'll pull from our data tables.</li>
+        </ul>
+      </div>
+      <div id="log" class="log">
+        <div class="msg sys">Session started. Type a question about sales, marketing, or operations.</div>
+      </div>
+      <div class="row">
+        <textarea id="msg" placeholder="Ask about sales trends, SKU mix shifts, marketing ROI, etc."></textarea>
+        <button id="send">Send</button>
+      </div>
+      <div class="small" id="status"></div>
+    </div>
+  </div>
+<script>
+const log = document.getElementById('log');
+const msg = document.getElementById('msg');
+const send = document.getElementById('send');
+const statusEl = document.getElementById('status');
+
+// Configure marked for safe rendering
+marked.setOptions({ breaks: true, gfm: true });
+
+function add(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role==='user'?'user':'bot');
+  if (role === 'user') {
+    div.textContent = text;
+  } else {
+    // Render markdown for bot responses
+    div.innerHTML = marked.parse(text);
+  }
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function ping() {
+  try {
+    const r = await fetch('/health');
+    const j = await r.json();
+    statusEl.textContent = j.ok ? 'LLM: OK' : ('LLM: '+ (j.last_error||'error'));
+  } catch (e) {
+    statusEl.textContent = 'LLM: error';
+  }
+}
+ping();
+
+send.onclick = async () => {
+  const text = msg.value.trim();
+  if (!text) return;
+  add('user', text);
+  msg.value = '';
+  send.disabled = true;
+  try {
+    const r = await fetch('/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text})
+    });
+    const j = await r.json();
+    if (j.reply) add('assistant', j.reply);
+    else add('assistant', j.error || 'Error');
+  } catch (e) {
+    add('assistant', 'Network error');
+  } finally {
+    send.disabled = false;
+  }
+};
+
+// Allow Ctrl+Enter or Cmd+Enter to send
+msg.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    send.click();
+  }
+});
+</script>
+</body>
+</html>

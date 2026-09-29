@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ company }} - Nibbles</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --tan:#b9ad95;
+  --tan-d:#a8987d;
+  --bg:#d8d1bf;
+  --text:#2a261f;
+  --pill-bg:#f1ece2;
+  --pill-bd:#d9cfbf;
+  --bot:#ffffff;
+  --user:#e9e3d8;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:24px;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  background: var(--bg);
+  color: var(--text);
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh;
+  position: relative;  /* For absolute positioning of logo */
+}
+/* Global Top-Left Logo */
+.global-logo {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+  z-index: 10;  /* Above other elements */
+}
+.global-logo img {
+  max-height: 60px;  /* Adjustable size */
+  width: auto;
+}
+.chat{
+  width:min(1260px, 92vw);
+  height:min(88vh, 748px);
+  background:#fff;
+  border-radius:22px;
+  box-shadow:0 8px 30px rgba(0,0,0,.08);
+  display:flex; flex-direction:column; overflow:hidden;
+  border:1px solid #eee;
+}
+.header{
+  background:var(--tan);
+  color:#fff;
+  padding:14px 16px 26px 16px;
+}
+.header h1{ margin:0; font-size:16px; font-weight:700; }
+.header .sub{ margin-top:6px; font-size:12px; opacity:.95; }
+.messages{ flex:1; overflow:auto; padding:14px 14px 0 14px; background:#fff; }
+.msg{
+  max-width:86%; padding:10px 12px; margin:10px 0;
+  border-radius:14px; line-height:1.35; font-size:14px;
+  box-shadow:0 1px 0 rgba(0,0,0,.04);
+}
+.msg.bot{ background:var(--bot); border:1px solid #f0f0f0 }
+.msg.user{ background:var(--user); margin-left:auto; }
+.footer{ padding:12px; background:#fff; border-top:1px solid #eee; display:flex; gap:8px; }
+input[type=text]{
+  flex:1; border:1px solid #e4e0d8; border-radius:12px; padding:12px 14px; font-size:14px; outline:none;
+}
+button{ background:var(--tan-d); color:#fff; border:0; border-radius:12px; padding:0 14px; font-weight:700; cursor:pointer; }
+.pill{
+  display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px;
+  background:var(--pill-bg); border:1px solid var(--pill-bd); text-decoration:none; color:#5a5143;
+  margin-left:6px;
+}
+small{ color:#6f6657 }
+/* README styles */
+.readme { background: #f9f9f9; padding: 10px; margin: 10px 14px; border-radius: 8px; font-size: 14px; color: #333; }
+.readme ul { margin: 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+  <!-- Global Top-Left Logo (outside chatbot) -->
+  <div class="global-logo">
+    <img src="/logo.png" alt="GECO Asia Logo">
+  </div>
+  <div class="chat" id="chat">
+    <div class="header">
+      <h1>Chat with {{ company }}</h1>
+      <div class="sub">Our operating hours are from 8am – 5pm (Singapore time)</div>
+    </div>
+    <!-- Brief README Instructions -->
+    <div class="readme">
+      <strong>How to Use This Chatbot:</strong>
+      <ul>
+        <li>Type your question about products, prices, or flavors in the box below (e.g., "Roasted Peanuts 150g price").</li>
+        <li>Press "Send" or hit Enter to get a response.</li>
+        <li>If you need help, just ask—I'm here to assist!</li>
+      </ul>
+    </div>
+    <div class="messages" id="messages">
+      <div class="msg bot">Hi! I’m Nibbles — ask me for any product (e.g., <i>“Roasted Peanuts 150g price”</i>), and I’ll check our catalogue.</div>
+    </div>
+    <div class="footer">
+      <input id="box" type="text" placeholder="Enter your message..." autofocus>
+      <button id="send">Send</button>
+    </div>
+  </div>
+
+<script>
+const elMsgs = document.getElementById('messages');
+const elBox  = document.getElementById('box');
+const elSend = document.getElementById('send');
+
+function addMsg(text, who){
+  const div = document.createElement('div');
+  div.className = 'msg ' + (who || 'bot');
+  div.innerHTML = text;
+  elMsgs.appendChild(div);
+  elMsgs.scrollTop = elMsgs.scrollHeight;
+}
+
+function getSID(){
+  try{
+    let sid = localStorage.getItem('nibbles_sid');
+    if(!sid){
+      if (crypto && crypto.randomUUID) sid = crypto.randomUUID();
+      else sid = String(Date.now()) + Math.random().toString(16).slice(2);
+      localStorage.setItem('nibbles_sid', sid);
+    }
+    return sid;
+  }catch(e){ return 'sid-' + String(Date.now()); }
+}
+
+async function send(){
+  const text = elBox.value.trim();
+  if(!text) return;
+  addMsg(text, 'user');
+  elBox.value='';
+  try{
+    const r = await fetch('/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: text, sid: getSID()})
+    });
+    const j = await r.json();
+    addMsg(j.reply || 'Sorry, something went wrong.');
+  }catch(e){
+    addMsg('Network error. Please try again.');
+  }
+}
+
+elSend.addEventListener('click', send);
+elBox.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ send(); }});
+</script>
+</body>
+</html>

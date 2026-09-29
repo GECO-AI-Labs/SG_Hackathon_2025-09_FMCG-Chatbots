@@ -1,0 +1,16 @@
+faq_id,question,answer,faq_tags
+FAQ001,What delivery options do you offer?,We deliver island-wide within 2-3 working days. Delivery is free on orders above SGD 50.,"delivery,shipping"
+FAQ002,Are your products Halal certified?,Yes. Our nut and snack range is Halal certified unless a product page states otherwise.,"dietary,halal"
+FAQ003,Do your products contain allergens?,"Most items contain tree nuts and some contain peanuts or gluten. Every pack lists its allergens, and the allergen tags are on each product page.","dietary,allergens"
+FAQ004,How should I store the nuts once opened?,"Reseal the pack and keep it in a cool, dry place away from sunlight. Refrigerating opened packs keeps them crisp for longer in Singapore humidity.","storage,quality"
+FAQ005,What is your shelf life?,Unopened packs keep for 9 to 12 months. The best-before date is printed on the back of every pack.,"storage,quality"
+FAQ006,Can I place a corporate or bulk order?,"Yes. We handle corporate gifting and bulk orders, including custom hampers and company-branded packaging. Lead time is 5 to 7 working days.","corporate,bulk"
+FAQ007,What payment methods do you accept?,"PayNow, credit card, Atome, GrabPay and ShopeePay, depending on the store you order from.",payment
+FAQ008,Can I return or exchange a product?,"Yes, within 7 days of delivery if the pack is unopened. Contact us with your order number and we will arrange a replacement or refund.","returns,refund"
+FAQ009,Do you ship outside Singapore?,"Not at the moment. We deliver within Singapore only, including to business addresses.","delivery,international"
+FAQ010,How does the loyalty programme work?,"You earn points on every purchase and move through Bronze, Silver, Gold and Platinum tiers. Points convert to vouchers you can use at checkout.","loyalty,rewards"
+FAQ011,Are your nuts suitable for vegans?,Most are. Vegan-friendly items carry a vegan tag; honey-coated products are not vegan.,"dietary,vegan"
+FAQ012,Do you offer no-added-sugar or low-salt options?,"Yes. Look for the no_added_sugar and low_salt tags, which cover much of our natural baked and roasted range.","dietary,health"
+FAQ013,When do you run promotions?,"Our biggest promotions run at Chinese New Year, Ramadan, National Day, Mid-Autumn, 11.11 and Christmas.","promotions,pricing"
+FAQ014,What are your operating hours?,"Customer service runs 8am to 5pm Singapore time, Monday to Friday. Orders can be placed online any time.","support,hours"
+FAQ015,Which stores stock your products?,"Our range is carried in major supermarkets and online at Shopee, Lazada, RedMart, GrabMart, FairPrice Online and our own website.","retail,channels"

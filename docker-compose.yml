@@ -1,0 +1,33 @@
+# Brings both assistants up against the same dataset.
+#   cp .env.example .env   (then fill in AZURE_API_KEY and AZURE_DEPLOYMENT)
+#   docker compose up --build
+services:
+  clarity:
+    build:
+      context: .
+      dockerfile: apps/clarity/Dockerfile
+    image: cashew4nuts-clarity
+    container_name: clarity
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data/Team_Cashew_Synthetic_Data
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  nibbles:
+    build:
+      context: .
+      dockerfile: apps/nibbles/Dockerfile
+    image: cashew4nuts-nibbles
+    container_name: nibbles
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data/Team_Cashew_Synthetic_Data
+      LEADS_FILE: /app/data/runtime/nibbles_leads.csv
+    ports:
+      - "5001:5001"
+    volumes:
+      # Captured leads survive a container rebuild.
+      - ./data/runtime:/app/data/runtime
+    restart: unless-stopped

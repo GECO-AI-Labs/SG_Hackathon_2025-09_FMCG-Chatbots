@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarity — {{ company }} Staff Assistant</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111a2b; --panel-2:#0e1626; --line:#1f2b41;
+    --fg:#e6edf7; --muted:#8da2c0; --acc:#22d3ee; --acc-dim:#0e7490;
+    --user:#16233b; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+  .shell{max-width:980px;margin:0 auto;height:100vh;display:flex;flex-direction:column;padding:20px 20px 16px}
+  header{display:flex;align-items:center;gap:14px;padding-bottom:14px}
+  header img{height:38px;width:auto}
+  .title{font-weight:700;font-size:18px;letter-spacing:.2px}
+  .title span{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+  .spacer{flex:1}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px}
+  .dot.ok{background:var(--ok)} .dot.err{background:var(--err)}
+  .status{font-size:12px;color:var(--muted)}
+  .ghost{background:none;border:1px solid var(--line);color:var(--muted);
+    border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+  .ghost:hover{color:var(--fg);border-color:var(--acc-dim)}
+
+  .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;
+    padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+  .msg{max-width:88%;padding:12px 15px;border-radius:13px;overflow-wrap:anywhere}
+  .msg.user{align-self:flex-end;background:var(--user);border:1px solid var(--line)}
+  .msg.bot{align-self:flex-start;background:var(--panel-2);border:1px solid var(--line);width:100%;max-width:100%}
+  .msg.sys{align-self:center;color:var(--muted);font-size:13px;font-style:italic;padding:4px}
+  .msg.err{align-self:flex-start;background:#2a1520;border:1px solid #7f1d1d;color:#fecaca}
+
+  .steps{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .step{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);
+    background:rgba(34,211,238,.06);border:1px solid var(--line);
+    border-radius:8px;padding:6px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .step b{color:var(--acc);font-weight:600}
+  .step .args{color:#6b7f9c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .step .mark{color:var(--ok)}
+  .step.pending .mark{color:var(--warn)}
+
+  .cursor::after{content:"▍";color:var(--acc);animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .bot h1,.bot h2,.bot h3{margin:.9em 0 .4em;color:var(--acc);line-height:1.3}
+  .bot h1{font-size:1.25em}.bot h2{font-size:1.14em}.bot h3{font-size:1.04em}
+  .bot p{margin:.55em 0}
+  .bot ul,.bot ol{margin:.5em 0;padding-left:1.4em}
+  .bot li{margin:.25em 0}
+  .bot strong{color:#fff}
+  .bot table{border-collapse:collapse;margin:.8em 0;width:100%;font-size:.92em;display:block;overflow-x:auto}
+  .bot th,.bot td{border:1px solid var(--line);padding:7px 10px;text-align:left;white-space:nowrap}
+  .bot th{background:#16223a;color:var(--acc);font-weight:600}
+  .bot tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+  .bot code{background:#16223a;padding:1px 5px;border-radius:4px;font-size:.9em}
+  .bot pre{background:#16223a;padding:12px;border-radius:8px;overflow-x:auto}
+  .bot pre code{background:none;padding:0}
+  .bot blockquote{border-left:3px solid var(--acc-dim);margin:.6em 0;padding-left:1em;color:var(--muted)}
+
+  .composer{display:flex;gap:10px;margin-top:14px;align-items:flex-end}
+  textarea{flex:1;background:var(--panel);color:var(--fg);border:1px solid var(--line);
+    border-radius:12px;padding:12px 14px;font:inherit;resize:none;max-height:180px;min-height:48px}
+  textarea:focus{outline:none;border-color:var(--acc-dim)}
+  .send{background:var(--acc);color:#04121a;border:0;font-weight:700;
+    padding:0 20px;height:48px;border-radius:12px;cursor:pointer}
+  .send:disabled{opacity:.45;cursor:not-allowed}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px;text-align:center}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+  .chip{font-size:12px;color:var(--muted);border:1px solid var(--line);background:none;
+    border-radius:999px;padding:5px 11px;cursor:pointer}
+  .chip:hover{color:var(--acc);border-color:var(--acc-dim)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <img src="/static/logo.png" alt="">
+    <div class="title">Clarity<span>{{ company }} staff analytics</span></div>
+    <div class="spacer"></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">checking…</span></div>
+    <button class="ghost" id="reset">Clear</button>
+  </header>
+
+  <div class="log" id="log">
+    <div class="msg sys">Ask about sales, margin, campaigns, stock or customers. Every figure is queried from the dataset.</div>
+  </div>
+
+  <div class="composer">
+    <textarea id="box" rows="1" placeholder="e.g. How did 2030 revenue compare to 2029, and what drove the gap?"></textarea>
+    <button class="send" id="send">Send</button>
+  </div>
+  <div class="chips" style="margin-top:10px">
+    <button class="chip">Which campaigns delivered the best ROAS last year?</button>
+    <button class="chip">Show the revenue trend by quarter since 2028</button>
+    <button class="chip">Which SKUs are closest to stocking out?</button>
+    <button class="chip">How has the channel mix shifted since 2019?</button>
+  </div>
+  <div class="hint">Enter to send, Shift+Enter for a new line</div>
+</div>
+
+<script>
+marked.setOptions({ breaks:true, gfm:true });
+
+const log=document.getElementById('log'), box=document.getElementById('box'),
+      send=document.getElementById('send'), dot=document.getElementById('dot'),
+      statusEl=document.getElementById('status');
+let busy=false;
+
+const scroll=()=>{log.scrollTop=log.scrollHeight;};
+
+function addUser(text){
+  const el=document.createElement('div');
+  el.className='msg user'; el.textContent=text;
+  log.appendChild(el); scroll();
+}
+
+function addBot(){
+  const el=document.createElement('div'); el.className='msg bot';
+  const steps=document.createElement('div'); steps.className='steps';
+  const body=document.createElement('div'); body.className='body cursor';
+  el.append(steps, body); log.appendChild(el); scroll();
+  return {el, steps, body, raw:''};
+}
+
+function addStep(bot, name, args){
+  const row=document.createElement('div'); row.className='step pending';
+  let pretty='';
+  try{ const o=JSON.parse(args||'{}');
+       pretty=Object.entries(o).map(([k,v])=>`${k}=${v}`).join('  '); }
+  catch(e){ pretty=args||''; }
+  row.innerHTML=`<span class="mark">▸</span><b></b><span class="args"></span>`;
+  row.querySelector('b').textContent=name;
+  row.querySelector('.args').textContent=pretty;
+  bot.steps.appendChild(row); scroll();
+  return row;
+}
+
+function render(bot){
+  bot.body.innerHTML=marked.parse(bot.raw);
+  bot.body.classList.add('cursor');
+  scroll();
+}
+
+async function ping(){
+  try{
+    const r=await fetch('/healthz'); const j=await r.json();
+    const tables=Object.keys(j.tables||{}).length;
+    if(j.ok){ dot.className='dot ok';
+      statusEl.textContent=`${tables} tables · ${(j.providers[0]||{}).model||'model'}`; }
+    else { dot.className='dot err';
+      statusEl.textContent = j.llm_enabled ? 'data not loaded' : 'no model configured'; }
+  }catch(e){ dot.className='dot err'; statusEl.textContent='offline'; }
+}
+ping();
+
+async function ask(text){
+  if(busy || !text.trim()) return;
+  busy=true; send.disabled=true;
+  addUser(text); box.value=''; box.style.height='auto';
+  const bot=addBot();
+  let pending=null;
+
+  try{
+    const res=await fetch('/chat',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text})
+    });
+    if(!res.ok || !res.body){
+      const j=await res.json().catch(()=>({error:'Request failed'}));
+      throw new Error(j.error||'Request failed');
+    }
+
+    const reader=res.body.getReader(), dec=new TextDecoder();
+    let buffer='';
+    while(true){
+      const {value, done}=await reader.read();
+      if(done) break;
+      buffer+=dec.decode(value,{stream:true});
+      const parts=buffer.split('\n\n'); buffer=parts.pop();
+      for(const part of parts){
+        const line=part.split('\n').find(l=>l.startsWith('data:'));
+        if(!line) continue;
+        let ev; try{ ev=JSON.parse(line.slice(5).trim()); }catch(e){ continue; }
+
+        if(ev.type==='delta'){ bot.raw+=ev.text; render(bot); }
+        else if(ev.type==='retract'){ bot.raw=''; bot.body.innerHTML=''; }
+        else if(ev.type==='tool'){ pending=addStep(bot, ev.name, ev.arguments); }
+        else if(ev.type==='tool_done'){
+          if(pending){ pending.classList.remove('pending');
+            pending.querySelector('.mark').textContent = ev.ok ? '✓' : '✗'; pending=null; }
+        }
+        else if(ev.type==='done'){ bot.body.classList.remove('cursor'); }
+        else if(ev.type==='error'){
+          bot.el.className='msg err';
+          bot.body.classList.remove('cursor');
+          bot.body.textContent=ev.message;
+        }
+      }
+    }
+  }catch(err){
+    bot.el.className='msg err';
+    bot.body.classList.remove('cursor');
+    bot.body.textContent=err.message||'Network error.';
+  }finally{
+    bot.body.classList.remove('cursor');
+    busy=false; send.disabled=false; box.focus(); scroll();
+  }
+}
+
+send.onclick=()=>ask(box.value);
+box.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); ask(box.value); }
+});
+box.addEventListener('input',()=>{
+  box.style.height='auto'; box.style.height=Math.min(box.scrollHeight,180)+'px';
+});
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>ask(c.textContent));
+document.getElementById('reset').onclick=async()=>{
+  await fetch('/reset',{method:'POST'});
+  log.innerHTML='<div class="msg sys">History cleared.</div>';
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Secrets. The example file is committed; the real one never is.
+.env
+*.env
+!.env.example
+llm.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Runtime output
+data/runtime/
+*.log
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
