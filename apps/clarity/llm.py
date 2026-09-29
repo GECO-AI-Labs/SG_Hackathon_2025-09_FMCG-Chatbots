@@ -200,12 +200,19 @@ class Provider:
 
     def redacted(self) -> Dict[str, str]:
         """Safe for logs and the health endpoint."""
+        responses = self.protocol == "responses"
         return {
             "name": self.name,
             "endpoint": self.endpoint(),
             "model": self.model,
             "auth_type": self.auth_type,
-            "token_param": self.profile.token_param,
+            "protocol": self.protocol,
+            # Report the field actually sent, which differs by protocol.
+            "token_param": (
+                self.profile.responses_token_param if responses
+                else self.profile.token_param
+            ),
+            "reasoning": self.profile.supports_reasoning_effort,
         }
 
 
