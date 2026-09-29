@@ -170,6 +170,19 @@ what the numbers do and why.
 - **`/healthz`** on both apps reports data load state, resolved endpoint and
   the payload shape in use. Check it first when something looks wrong.
 
+## Updating a deployment
+
+After pushing, on the VM:
+
+```bash
+cd /data/cashew-chatbot && ./deploy/update.sh
+```
+
+It pulls, rebuilds, waits for both health checks and prints the result. Local
+edits to tracked files are discarded, since the VM is a deployment target and
+not somewhere to author changes. `.env` and `data/runtime` are untracked, so
+they survive.
+
 ## Deploying
 
 Both apps sit behind Nginx Proxy Manager on a shared VM, at
