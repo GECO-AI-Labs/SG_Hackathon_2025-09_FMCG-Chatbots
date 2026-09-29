@@ -63,6 +63,7 @@ class ModelProfile:
     """Which payload fields a given deployment will accept."""
 
     token_param: str = "max_tokens"
+    responses_token_param: str = "max_output_tokens"
     supports_temperature: bool = True
     supports_top_p: bool = True
     supports_reasoning_effort: bool = False
@@ -129,10 +130,25 @@ class Provider:
     def is_azure(self) -> bool:
         return ".azure.com" in self.api_url.lower()
 
+    @property
+    def protocol(self) -> str:
+        """Which wire format this endpoint speaks.
+
+        Azure exposes GPT-5 on two incompatible APIs. Chat Completions takes
+        ``messages`` and streams ``choices[].delta.content``. The Responses
+        API takes ``input`` and streams typed ``response.*`` events. The
+        portal hands out whichever it prefers for a given model, so the URL
+        decides rather than the operator.
+        """
+        return "responses" if "/responses" in self.api_url.lower() else "chat"
+
     def endpoint(self) -> str:
         """Resolve the configured URL into a full chat-completions URL."""
         url = self.api_url.strip()
         low = url.lower()
+
+        if low.rstrip("/").endswith("/responses"):
+            return url.rstrip("/")
 
         if "/chat/completions" not in low:
             base = url.rstrip("/")
@@ -256,6 +272,67 @@ def load_providers(env: Optional[Dict[str, str]] = None) -> List[Provider]:
 
 
 # --------------------------------------------------------------------------
+# Responses API translation
+# --------------------------------------------------------------------------
+
+
+def to_responses_input(
+    messages: List[Dict[str, Any]]
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Convert Chat Completions messages into Responses instructions + input.
+
+    System messages become top-level instructions. Tool calls and their
+    results become ``function_call`` and ``function_call_output`` items rather
+    than message roles.
+    """
+    instructions: List[str] = []
+    items: List[Dict[str, Any]] = []
+
+    for message in messages:
+        role = message.get("role")
+        content = message.get("content")
+
+        if role == "system":
+            if content:
+                instructions.append(str(content))
+        elif role == "tool":
+            items.append({
+                "type": "function_call_output",
+                "call_id": message.get("tool_call_id", ""),
+                "output": str(content or ""),
+            })
+        elif role == "assistant" and message.get("tool_calls"):
+            if content:
+                items.append({"role": "assistant", "content": str(content)})
+            for call in message["tool_calls"]:
+                fn = call.get("function") or {}
+                items.append({
+                    "type": "function_call",
+                    "call_id": call.get("id", ""),
+                    "name": fn.get("name", ""),
+                    "arguments": fn.get("arguments", "{}"),
+                })
+        else:
+            items.append({"role": role or "user", "content": str(content or "")})
+
+    return "\n\n".join(instructions), items
+
+
+def to_responses_tools(tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Flatten Chat Completions tool schemas into Responses tool schemas."""
+    out: List[Dict[str, Any]] = []
+    for tool in tools or []:
+        fn = tool.get("function") or tool
+        out.append({
+            "type": "function",
+            "name": fn.get("name", ""),
+            "description": fn.get("description", ""),
+            "parameters": fn.get("parameters", {"type": "object", "properties": {}}),
+        })
+    return out
+
+
+# --------------------------------------------------------------------------
 # Client
 # --------------------------------------------------------------------------
 
@@ -331,6 +408,13 @@ class ChatClient:
         reasoning_effort: Optional[str],
         verbosity: Optional[str],
     ) -> Dict[str, Any]:
+        if provider.protocol == "responses":
+            return self._responses_payload(
+                provider, messages, stream=stream, temperature=temperature,
+                max_tokens=max_tokens, tools=tools, tool_choice=tool_choice,
+                reasoning_effort=reasoning_effort, verbosity=verbosity,
+            )
+
         profile = provider.profile
         payload: Dict[str, Any] = {"messages": messages, "stream": stream}
         if provider.model:
@@ -348,6 +432,42 @@ class ChatClient:
             payload["tool_choice"] = tool_choice or "auto"
         return payload
 
+    def _responses_payload(
+        self,
+        provider: Provider,
+        messages: List[Dict[str, Any]],
+        *,
+        stream: bool,
+        temperature: Optional[float],
+        max_tokens: Optional[int],
+        tools: Optional[List[Dict[str, Any]]],
+        tool_choice: Optional[str],
+        reasoning_effort: Optional[str],
+        verbosity: Optional[str],
+    ) -> Dict[str, Any]:
+        """Same request, expressed the way the Responses API wants it."""
+        profile = provider.profile
+        instructions, items = to_responses_input(messages)
+
+        payload: Dict[str, Any] = {"input": items, "stream": stream}
+        if provider.model:
+            payload["model"] = provider.model
+        if instructions:
+            payload["instructions"] = instructions
+        if max_tokens is not None:
+            payload[profile.responses_token_param] = int(max_tokens)
+        if temperature is not None and profile.supports_temperature:
+            payload["temperature"] = float(temperature)
+        # Reasoning effort and verbosity are nested objects here, not flat keys.
+        if reasoning_effort and profile.supports_reasoning_effort:
+            payload["reasoning"] = {"effort": reasoning_effort}
+        if verbosity and profile.supports_verbosity:
+            payload["text"] = {"verbosity": verbosity}
+        if tools:
+            payload["tools"] = to_responses_tools(tools)
+            payload["tool_choice"] = tool_choice or "auto"
+        return payload
+
     def _repair(self, provider: Provider, body: str) -> bool:
         """Adapt the profile to a rejection. True when worth retrying."""
         try:
@@ -356,6 +476,9 @@ class ChatClient:
             err = {}
         param = (err.get("param") or "").strip()
         message = f"{err.get('message', '')} {body[:400]}".lower()
+
+        if param in ("max_output_tokens", "max_completion_tokens"):
+            return False        # already using the name the service asked for
 
         if param == "max_tokens" or (
             not param and "max_completion_tokens" in message
@@ -424,7 +547,10 @@ class ChatClient:
                     continue
 
                 if resp.status_code == 200:
-                    choices = resp.json().get("choices") or []
+                    body = resp.json()
+                    if provider.protocol == "responses":
+                        return self._responses_message(body)
+                    choices = body.get("choices") or []
                     if not choices:
                         last = f"{provider.name}: empty choices"
                         break
@@ -500,9 +626,15 @@ class ChatClient:
                     time.sleep(self.backoff * (attempt + 1))
                     continue
 
-                self._say(f"{provider.name}: streaming from {provider.endpoint()}")
+                self._say(
+                    f"{provider.name}: streaming {provider.protocol} "
+                    f"from {provider.endpoint()}"
+                )
+                reader = (self._read_responses_stream
+                          if provider.protocol == "responses"
+                          else self._read_stream)
                 try:
-                    yield from self._read_stream(resp)
+                    yield from reader(resp)
                 finally:
                     resp.close()
                 return
@@ -564,4 +696,111 @@ class ChatClient:
 
         if pending:
             yield {"type": "tool", "calls": [pending[k] for k in sorted(pending)]}
+        yield {"type": "end", "reason": reason}
+
+    # -- Responses API parsing -------------------------------------------
+    @staticmethod
+    def _responses_message(body: Dict[str, Any]) -> Dict[str, Any]:
+        """Flatten a non-streamed Responses body into a Chat-style message."""
+        text: List[str] = []
+        calls: List[Dict[str, Any]] = []
+        for item in body.get("output") or []:
+            kind = item.get("type")
+            if kind == "message":
+                for part in item.get("content") or []:
+                    if part.get("type") in ("output_text", "text"):
+                        text.append(part.get("text", ""))
+            elif kind == "function_call":
+                calls.append({
+                    "id": item.get("call_id") or item.get("id", ""),
+                    "type": "function",
+                    "function": {"name": item.get("name", ""),
+                                 "arguments": item.get("arguments", "{}")},
+                })
+        message: Dict[str, Any] = {"role": "assistant", "content": "".join(text)}
+        if calls:
+            message["tool_calls"] = calls
+        return message
+
+    @staticmethod
+    def _read_responses_stream(resp: requests.Response) -> Iterator[Dict[str, Any]]:
+        """Normalise Responses SSE into the same events the chat reader emits.
+
+        The wire format is entirely different: typed ``response.*`` events
+        carrying deltas, rather than a choices array. Callers never see the
+        difference.
+        """
+        pending: Dict[str, Dict[str, Any]] = {}
+        order: List[str] = []
+        reason = ""
+
+        for raw in resp.iter_lines(decode_unicode=True):
+            if not raw:
+                continue
+            line = raw.strip()
+            # Responses sends "event:" lines too; the JSON carries its own type.
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+
+            kind = chunk.get("type", "")
+
+            if kind == "response.output_text.delta":
+                text = chunk.get("delta") or ""
+                if text:
+                    yield {"type": "text", "text": text}
+
+            elif kind == "response.output_item.added":
+                item = chunk.get("item") or {}
+                if item.get("type") == "function_call":
+                    key = item.get("id") or item.get("call_id") or str(len(order))
+                    if key not in pending:
+                        order.append(key)
+                    pending[key] = {
+                        "id": item.get("call_id") or item.get("id", ""),
+                        "type": "function",
+                        "function": {"name": item.get("name", ""), "arguments": ""},
+                    }
+
+            elif kind == "response.function_call_arguments.delta":
+                key = chunk.get("item_id") or (order[-1] if order else None)
+                if key in pending:
+                    pending[key]["function"]["arguments"] += chunk.get("delta") or ""
+
+            elif kind == "response.function_call_arguments.done":
+                key = chunk.get("item_id") or (order[-1] if order else None)
+                if key in pending and chunk.get("arguments"):
+                    pending[key]["function"]["arguments"] = chunk["arguments"]
+
+            elif kind == "response.output_item.done":
+                item = chunk.get("item") or {}
+                if item.get("type") == "function_call":
+                    key = item.get("id") or item.get("call_id")
+                    if key in pending:
+                        pending[key]["id"] = item.get("call_id") or pending[key]["id"]
+                        pending[key]["function"]["name"] = (
+                            item.get("name") or pending[key]["function"]["name"])
+                        if item.get("arguments"):
+                            pending[key]["function"]["arguments"] = item["arguments"]
+
+            elif kind in ("response.completed", "response.incomplete"):
+                body = chunk.get("response") or {}
+                usage = body.get("usage")
+                if usage:
+                    yield {"type": "usage", "usage": usage}
+                reason = body.get("status") or "completed"
+
+            elif kind in ("response.failed", "error"):
+                body = chunk.get("response") or chunk
+                detail = (body.get("error") or {}).get("message") or str(body)[:300]
+                raise LLMError(f"Responses API error: {detail}")
+
+        if pending:
+            yield {"type": "tool", "calls": [pending[k] for k in order if k in pending]}
         yield {"type": "end", "reason": reason}

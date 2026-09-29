@@ -65,6 +65,26 @@ out the route:
 
 Auth follows the host: `api-key` for Azure, bearer tokens elsewhere.
 
+### Two protocols, one client
+
+Azure serves different models over different APIs, and the portal hands out
+whichever it prefers per deployment. GPT-5 class models come with a
+`/openai/v1/responses` endpoint; DeepSeek and older models come with
+`/openai/v1/chat/completions`. They are not compatible:
+
+| | Chat Completions | Responses |
+|---|---|---|
+| Conversation | `messages` | `input` plus `instructions` |
+| Token cap | `max_completion_tokens` | `max_output_tokens` |
+| Reasoning | `reasoning_effort` | `reasoning: {effort}` |
+| Verbosity | `verbosity` | `text: {verbosity}` |
+| Tool schema | nested under `function` | flat |
+| Streaming | `choices[].delta.content` | `response.output_text.delta` |
+
+The client picks the protocol from the URL and translates in both directions,
+so the apps never see the difference and failover works across a mixed chain.
+Paste the endpoint exactly as the portal shows it.
+
 ### Model differences are handled for you
 
 GPT-5 and the o-series reject `max_tokens` and reject any `temperature` other
