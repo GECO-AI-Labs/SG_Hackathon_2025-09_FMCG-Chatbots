@@ -32,6 +32,10 @@ services:
       # Loopback only; nginx terminates the public connection.
       - "127.0.0.1:5001:5001"
     volumes:
-      # Captured leads survive a container rebuild.
+      # Captured leads survive a container rebuild. The host directory must
+      # be owned by uid 10001, the container's appuser, because a bind mount
+      # adopts host ownership and overrides the chown done in the image:
+      #   sudo chown -R 10001:10001 data/runtime
+      # deploy/bootstrap-vm.sh does this for you.
       - ./data/runtime:/app/data/runtime
     restart: unless-stopped

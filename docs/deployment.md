@@ -7,6 +7,71 @@ Two subdomains on one VM, both proxied by nginx to containers on localhost.
 | `nibbles.ai.geco.asia` | nibbles | 5001 | Public |
 | `clarity.ai.geco.asia` | clarity | 5000 | Staff only, must be gated |
 
+## Replacing an older deployment
+
+The first version ran from a plain directory with the data at the top level,
+images side-loaded from `.tar` files and secrets in `llm.env`. The layout has
+changed, so replace the directory rather than updating it in place.
+
+```bash
+cd /data/cashew-chatbot
+
+# 1. Keep anything the old stack captured. Leads are the only live data.
+cp Team_Cashew_Synthetic_Data/Nibbles_Leads.csv ~/leads-backup-$(date +%F).csv
+
+# 2. Stop the old stack and reclaim the side-loaded images.
+docker compose down --remove-orphans
+docker images                      # note the old image ids
+docker image prune -af             # removes anything no longer referenced
+
+# 3. Move the old directory aside. Keep it until the new stack is proven.
+cd /data && sudo mv cashew-chatbot cashew-chatbot.old-$(date +%F)
+
+# 4. Clone. Both repos are private, so this needs a credential: either a
+#    read-only deploy key on the repo, or a fine-grained token.
+sudo git clone https://github.com/GECO-AI-Labs/SG_Hackathon_2025-09_FMCG-Chatbots.git \
+     /data/cashew-chatbot
+sudo chown -R ubuntu:ubuntu /data/cashew-chatbot
+cd /data/cashew-chatbot
+
+# 5. Prepare the host: packages, runtime ownership, nginx sites.
+sudo ./deploy/bootstrap-vm.sh
+sudo htpasswd -c /etc/nginx/.htpasswd-clarity <username>
+
+# 6. Secrets. Not in the repo, so copy or paste them in.
+cp .env.example .env && nano .env        # fill AZURE_API_KEY and LLM_1_API_KEY
+
+# 7. Run.
+docker compose up -d --build
+curl -s localhost:5000/healthz | jq '.ok, .providers'
+./deploy/check-streaming.sh http://nibbles.ai.geco.asia
+```
+
+Restore the old leads into the new location once you are happy:
+
+```bash
+cp ~/leads-backup-*.csv data/runtime/nibbles_leads.csv
+sudo chown 10001:10001 data/runtime/nibbles_leads.csv
+```
+
+Delete `cashew-chatbot.old-*` and the old `llm.env` only after the new stack
+has served traffic. That old env file holds a live key, so remove it rather
+than leaving it on disk.
+
+### What changed that affects the host
+
+| | Old | New |
+|---|---|---|
+| Data path | `Team_Cashew_Synthetic_Data/` | `data/Team_Cashew_Synthetic_Data/` |
+| Images | side-loaded `.tar` | built from the repo |
+| Secrets | `llm.env` | `.env`, gitignored |
+| Port binding | all interfaces | `127.0.0.1` only |
+| Reverse proxy | none | nginx, required |
+
+The port change is the one that will catch you out. Both containers now bind
+loopback so nobody can reach Clarity on `<vm-ip>:5000` and skip its basic
+auth. Nothing outside the VM can reach either app until nginx is in front.
+
 ## DNS
 
 Point both A records at the VM's public IP. Nginx routes on the Host header,
