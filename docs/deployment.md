@@ -145,9 +145,11 @@ inside its own container, loopback is itself.
 Full proxy host settings are in `deploy/nginx-proxy-manager/README.md`. Two
 of them are easy to miss and both break things quietly:
 
-- **Advanced tab** must carry `proxy_buffering off` and the rest. NPM buffers
-  by default, which collapses the stream into one delivery and removes
-  streaming without any error.
+- **Advanced settings** (the gear icon on newer builds) must carry
+  `proxy_buffering off` and the rest. NPM buffers by default, which collapses
+  the stream into one delivery and removes streaming without any error. Do not
+  add `proxy_http_version` there: the Websockets toggle already emits it and
+  nginx rejects the duplicate, silently discarding the whole host.
 - **Access List** on the Clarity host. Clarity returns unit costs and gross
   margins and has no login of its own.
 

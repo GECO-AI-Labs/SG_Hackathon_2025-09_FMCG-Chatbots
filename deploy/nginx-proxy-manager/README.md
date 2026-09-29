@@ -42,19 +42,38 @@ same network and the proxy hosts below will return 502.
 
 Cache Assets must be off. Caching an event stream collapses it.
 
-**Advanced tab** — paste this. Without it NPM buffers the response, the reply
-arrives in one lump, and streaming is silently gone:
+**Advanced settings** — the gear icon at the right of the tab row on newer
+builds, labelled "Advanced" on older ones. Paste this into the Custom Nginx
+Configuration box. Without it NPM buffers the response, the reply arrives in
+one lump, and streaming is silently gone:
 
 ```nginx
 proxy_buffering off;
 proxy_cache off;
 gzip off;
-proxy_http_version 1.1;
-proxy_set_header Connection "";
 proxy_read_timeout 3600s;
 proxy_send_timeout 3600s;
 chunked_transfer_encoding on;
 ```
+
+Do **not** add `proxy_http_version 1.1;` or `proxy_set_header Connection "";`
+here. With Websockets Support enabled, NPM already emits both, and nginx
+rejects a duplicate `proxy_http_version` in the same server block.
+
+That failure is silent and easy to misread. NPM writes the config, nginx
+refuses it, NPM rolls it back, and the reload is logged as successful. The
+host still shows Online in the UI because that reflects the database, not the
+disk. Requests then fall through to NPM's default page, so the hostname
+answers 200 while never reaching your container, and an Access List on it
+enforces nothing.
+
+Confirm a config actually exists after every save:
+
+```bash
+docker exec proxy-app-1 ls -la /data/nginx/proxy_host/
+```
+
+One `.conf` per proxy host. A missing file means the last save was rejected.
 
 **SSL tab**: request a Let's Encrypt certificate, then enable Force SSL and
 HTTP/2. Once that is live set `COOKIE_SECURE=1` in `.env` and run
