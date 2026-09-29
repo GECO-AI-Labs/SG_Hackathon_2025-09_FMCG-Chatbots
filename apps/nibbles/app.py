@@ -184,8 +184,13 @@ def reset() -> Response:
 
 @app.get("/healthz")
 def healthz() -> Response:
+    """Liveness only. See the note on Clarity's equivalent."""
+    ready = bool(len(CATALOG.df)) and CLIENT.enabled
+    if not config.HEALTH_DETAIL:
+        return jsonify({"ok": ready})
+
     return jsonify({
-        "ok": bool(len(CATALOG.df)) and CLIENT.enabled,
+        "ok": ready,
         "app": config.APP_NAME,
         "company": config.COMPANY_NAME,
         "data_dir": str(config.DATA_DIR),

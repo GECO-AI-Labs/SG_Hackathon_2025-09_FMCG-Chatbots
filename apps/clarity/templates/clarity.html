@@ -148,14 +148,13 @@ function render(bot){
 }
 
 async function ping(){
+  // Deliberately says nothing about the model, the data or the host.
+  // This page is publicly reachable and that is all backend detail.
   try{
     const r=await fetch('/healthz'); const j=await r.json();
-    const tables=Object.keys(j.tables||{}).length;
-    if(j.ok){ dot.className='dot ok';
-      statusEl.textContent=`${tables} tables · ${(j.providers[0]||{}).model||'model'}`; }
-    else { dot.className='dot err';
-      statusEl.textContent = j.llm_enabled ? 'data not loaded' : 'no model configured'; }
-  }catch(e){ dot.className='dot err'; statusEl.textContent='offline'; }
+    if(j.ok){ dot.className='dot ok'; statusEl.textContent='Connected'; }
+    else    { dot.className='dot err'; statusEl.textContent='Unavailable'; }
+  }catch(e){ dot.className='dot err'; statusEl.textContent='Offline'; }
 }
 ping();
 

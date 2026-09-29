@@ -47,6 +47,11 @@ DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
 # sent in clear text. Leave at 0 on plain HTTP or the cookie is dropped.
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
 
+# /healthz is reachable publicly, so it reports liveness only. Turn this on
+# to include the resolved endpoint, deployment name and table counts while
+# diagnosing, then turn it off.
+HEALTH_DETAIL = os.getenv("HEALTH_DETAIL", "0") == "1"
+
 DATA_DIR = _path(os.getenv("DATA_DIR", "data/Team_Cashew_Synthetic_Data"))
 LEADS_FILE = _path(os.getenv("LEADS_FILE", "data/runtime/nibbles_leads.csv"))
 

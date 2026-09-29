@@ -223,9 +223,20 @@ def reset() -> Response:
 
 @app.get("/healthz")
 def healthz() -> Response:
+    """Liveness only.
+
+    This endpoint is reachable from the public internet, so it says whether
+    the service is up and nothing else. Deployment names, the Azure endpoint,
+    table names and paths are all reconnaissance material. Set HEALTH_DETAIL=1
+    temporarily when diagnosing, and turn it off again.
+    """
+    ready = STORE.ready and CLIENT.enabled
+    if not config.HEALTH_DETAIL:
+        return jsonify({"ok": ready})
+
     first, last = STORE.date_range()
     return jsonify({
-        "ok": STORE.ready and CLIENT.enabled,
+        "ok": ready,
         "app": config.APP_NAME,
         "data_dir": str(config.DATA_DIR),
         "tables": {name: len(frame) for name, frame in STORE.tables.items()},
