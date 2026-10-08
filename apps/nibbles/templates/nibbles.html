@@ -54,6 +54,10 @@
   .dot.off{background:#E5A04B}
   .hero h1{margin:0;font:700 34px/1.1 var(--display);letter-spacing:-.02em}
   .hero p{margin:0;color:#D9CBBA}
+  .powered{display:flex;align-items:center;gap:12px;margin-top:6px;padding-top:16px;border-top:1px solid rgba(251,245,236,.14);
+    font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#B9A48B}
+  .powered img{height:52px;width:auto;display:block}
+  .m-logo{display:none}
   .panel{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:14px}
   .panel h2{margin:0;font-size:15px;font-weight:700}
   .help{display:flex;gap:12px;align-items:flex-start;text-align:left;background:none;border:0;padding:0;color:inherit}
@@ -179,6 +183,7 @@
     .chat-head{background:var(--ink);color:#FBF5EC;border:0;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
     .who span{color:#D9CBBA} .who .ava{color:var(--ink)} .who .d-only{display:none} .who .m-only{display:inline}
     .chat-head .ghost{display:none}
+    .m-logo{display:block;height:30px;width:auto;margin-right:4px}
     .m-order{display:flex;position:relative;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.08);
       color:#FBF5EC;border:0;align-items:center;justify-content:center}
     .m-order .count{position:absolute;top:3px;right:2px;font-size:11px;padding:0 5px;min-width:18px;background:var(--gold);color:var(--ink)}
@@ -220,6 +225,7 @@
         <span class="live"><span class="dot" data-status-dot></span><span data-status>Nibbles is online</span></span>
         <h1>Find the right snack in seconds.</h1>
         <p>Ask in English or 中文. Nibbles knows every product, pack size and price in our range.</p>
+        <div class="powered"><span>Powered by</span><img src="/static/logo.png" alt="GECO Asia"></div>
       </div>
 
       <div class="panel">
@@ -248,9 +254,10 @@
       <div class="chat-head">
         <div class="who">
           <span class="ava" aria-hidden="true">N</span>
-          <div><b>Nibbles</b><span><span class="dot" data-status-dot></span><span class="d-only">{{ company }} product assistant</span><span class="m-only">{{ company }} · online</span></span></div>
+          <div><b>Nibbles</b><span><span class="dot" data-status-dot></span><span class="d-only">{{ company }} product assistant</span><span class="m-only">Online</span></span></div>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <img class="m-logo" src="/static/logo.png" alt="GECO Asia">
           <button type="button" class="ghost" data-new>New chat</button>
           <button type="button" class="m-new" data-new aria-label="Start a new chat">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
@@ -274,7 +281,7 @@
         </div>
         <div class="fine">
           <span>Prices in SGD per pack. Always check the pack for allergens.</span>
-          <span class="geco"><img src="/static/logo.png" alt="">Powered by GECO</span>
+          <span class="geco">Powered by GECO Asia</span>
         </div>
       </form>
     </section>

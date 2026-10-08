@@ -35,6 +35,8 @@
   .brand{display:flex;align-items:center;gap:10px;padding:0 6px}
   .mark{width:34px;height:34px;border-radius:9px;background:var(--acc);color:var(--acc-ink);display:flex;align-items:center;justify-content:center;font-weight:700}
   .brand b{display:block;font-weight:700}
+  .brand .logo{height:40px;width:auto;display:block;flex:none;padding-right:12px;border-right:1px solid var(--line-2)}
+  .bar .logo{height:28px;width:auto;display:block}
   .brand div span{font-size:12px;color:var(--muted)}
   .new{font-size:14px;font-weight:600;color:var(--acc-ink);background:var(--acc);border:0;border-radius:10px;min-height:44px;
     display:inline-flex;align-items:center;justify-content:center;gap:8px}
@@ -196,7 +198,7 @@
 <div class="app">
   <aside class="side" aria-label="Sidebar">
     <div class="brand">
-      <span class="mark" aria-hidden="true">C</span>
+      <img class="logo" src="/static/logo.png" alt="GECO Asia">
       <div><b>Clarity</b><span>{{ company }} · Staff</span></div>
     </div>
     <button type="button" class="new" data-new>
@@ -213,7 +215,7 @@
   <main>
     <div class="bar">
       <h1 id="title">New question</h1>
-      <div class="m-brand"><span class="mark" aria-hidden="true">C</span><b>Clarity</b><span class="dot" data-dot></span></div>
+      <div class="m-brand"><img class="logo" src="/static/logo.png" alt="GECO Asia"><b>Clarity</b><span class="dot" data-dot></span></div>
       <div class="tools">
         <button type="button" class="ghost wide" id="csv" disabled>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export CSV
