@@ -22,3 +22,7 @@ data/runtime/
 Thumbs.db
 .idea/
 .vscode/
+
+# Login-related files
+azure-ssh.pem
+Geco-AI-Team_VM_login_details.txt
