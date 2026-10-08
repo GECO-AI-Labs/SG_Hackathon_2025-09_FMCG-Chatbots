@@ -126,6 +126,31 @@ Each of these cost time. Do not rediscover them.
    rounds run out, which is what exhausted them in the first place.
    `deploy/check-tool-loop.py` covers both, offline, in about a second.
 
+## Front-end redesign (8 October 2026)
+
+Both pages were rebuilt to the "Nibbles & Clarity Redesign" canvas. No new
+routes and no new dependencies beyond pinned CDN copies of marked 12.0.2 and
+DOMPurify 3.1.6 in Clarity.
+
+- **Nibbles** (`apps/nibbles/templates/nibbles.html`): warm cashew palette,
+  product cards with art, price per 100g, a "Best value" badge when one pack
+  is clearly cheaper per 100g, dietary and allergen tags, contextual follow-up
+  chips. "Add to order" builds an order request in the browser and sends it
+  to `/lead`, so it lands in the leads CSV. There is no checkout. Phones get a
+  full-screen chat with swipeable cards.
+- **Product art**: `tools/generate_product_art.py` draws 62 SVGs (23 category
+  and flavour pairs in snack, pouch and jar forms) into
+  `apps/nibbles/static/products/`. `catalog.py` adds an `image` path to every
+  item. Re-run the script after adding a category or flavour.
+- **Clarity** (`apps/clarity/templates/clarity.html`): dark analytics layout
+  with a session sidebar, query chips with row counts, KPI tiles, bar charts
+  drawn from answer tables, next-step cards, follow-up chips, CSV export and
+  copy. The prompt gained a presentation section for three fenced blocks
+  (`kpi`, `next`, `ask`). Grounding rules are unchanged. `tool_done` events
+  now carry `rows`.
+- `/lead` now keeps 2,000 characters of message instead of 500, to fit an
+  order request.
+
 ## Where work stopped
 
 HTTPS. Both hosts serve plain HTTP.
@@ -187,7 +212,7 @@ apps/clarity/   analytics assistant: llm.py, datastore.py, analytics.py,
 apps/nibbles/   customer assistant: llm.py, catalog.py, matching.py,
                 sessions.py, prompts.py, app.py, config.py
 data/           the dataset, plus catalog/sku_master_base.csv
-tools/          config.py and generate_synthetic_data.py
+tools/          config.py, generate_synthetic_data.py, generate_product_art.py
 deploy/         bootstrap-vm.sh, check-streaming.sh, nginx/,
                 nginx-proxy-manager/
 docs/           dataset.md, deployment.md, this file

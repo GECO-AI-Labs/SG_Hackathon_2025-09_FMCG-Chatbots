@@ -171,7 +171,8 @@ def lead() -> Response:
             name,
             str(payload.get("email", "")).strip(),
             str(payload.get("phone", "")).strip(),
-            str(payload.get("message", "")).strip()[:500],
+            # Long enough for an order request with a dozen lines.
+            str(payload.get("message", "")).strip()[:2000],
         ])
     return jsonify({"ok": True})
 

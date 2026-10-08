@@ -9,6 +9,7 @@ has to say so instead of inventing a product.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
@@ -26,6 +27,19 @@ CONFIDENTIAL_COLUMNS = [
     "unit_cost_sgd", "gross_margin_pct", "current_stock_units",
     "avg_daily_units_90d", "days_of_cover",
 ]
+
+
+def image_path(category, flavour, grams) -> str:
+    """Static art for a SKU. Mirrors the naming in tools/generate_product_art.py,
+    which draws one image per category, flavour and pack form."""
+    def slug(text) -> str:
+        return re.sub(r"[^a-z0-9]+", "-", str(text).lower()).strip("-")
+    try:
+        g = int(grams)
+    except (TypeError, ValueError):
+        g = 150
+    form = "snack" if g <= 80 else "pouch" if g <= 150 else "jar"
+    return f"/static/products/{slug(category)}--{slug(flavour)}--{form}.svg"
 
 
 class Catalog:
@@ -95,6 +109,8 @@ class Catalog:
                 "dietary_tags": str(row.get("dietary_tags") or ""),
                 "allergen_tags": str(row.get("allergen_tags") or ""),
                 "is_halal": bool(row.get("is_halal", False)),
+                "image": image_path(row.get("category"), row.get("flavour"),
+                                    row["_grams"] if pd.notna(row["_grams"]) else None),
             })
         return out
 

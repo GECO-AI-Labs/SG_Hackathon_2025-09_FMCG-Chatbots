@@ -2,228 +2,604 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Clarity — {{ company }} Staff Assistant</title>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A101C">
+<title>Clarity · {{ company }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <style>
   :root{
-    --bg:#0b1220; --panel:#111a2b; --panel-2:#0e1626; --line:#1f2b41;
-    --fg:#e6edf7; --muted:#8da2c0; --acc:#22d3ee; --acc-dim:#0e7490;
-    --user:#16233b; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+    --bg:#0A101C; --side:#0D1422; --panel:#111A2B; --deep:#0F1828; --raise:#172133;
+    --line:#1C2638; --line-2:#24304A; --line-3:#2A3650;
+    --fg:#E6EBF2; --fg-2:#C9D2E0; --fg-3:#B8C2D3; --muted:#93A0B6; --muted-2:#7E8BA3;
+    --acc:#22D3EE; --acc-2:#67E3F5; --acc-ink:#06212A; --slate:#5B7FB8;
+    --ok:#34D399; --amber:#F59E0B; --amber-2:#FBBF24; --err:#F87171;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;background:var(--bg);color:var(--fg);
-    font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
-  .shell{max-width:980px;margin:0 auto;height:100vh;display:flex;flex-direction:column;padding:20px 20px 16px}
-  header{display:flex;align-items:center;gap:14px;padding-bottom:14px}
-  header img{height:38px;width:auto}
-  .title{font-weight:700;font-size:18px;letter-spacing:.2px}
-  .title span{display:block;font-weight:400;font-size:12px;color:var(--muted)}
-  .spacer{flex:1}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px}
-  .dot.ok{background:var(--ok)} .dot.err{background:var(--err)}
-  .status{font-size:12px;color:var(--muted)}
-  .ghost{background:none;border:1px solid var(--line);color:var(--muted);
-    border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
-  .ghost:hover{color:var(--fg);border-color:var(--acc-dim)}
+  [hidden]{display:none !important}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--fg);font:15px/1.55 'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--acc-2)} a:hover{color:#A5F0FA}
+  button{font:inherit;cursor:pointer;color:inherit}
+  :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-  .log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;
-    padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
-  .msg{max-width:88%;padding:12px 15px;border-radius:13px;overflow-wrap:anywhere}
-  .msg.user{align-self:flex-end;background:var(--user);border:1px solid var(--line)}
-  .msg.bot{align-self:flex-start;background:var(--panel-2);border:1px solid var(--line);width:100%;max-width:100%}
-  .msg.sys{align-self:center;color:var(--muted);font-size:13px;font-style:italic;padding:4px}
-  .msg.err{align-self:flex-start;background:#2a1520;border:1px solid #7f1d1d;color:#fecaca}
+  .app{display:flex;height:100vh;height:100dvh}
 
-  .steps{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-  .step{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);
-    background:rgba(34,211,238,.06);border:1px solid var(--line);
-    border-radius:8px;padding:6px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  .step b{color:var(--acc);font-weight:600}
-  .step .args{color:#6b7f9c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-  .step .mark{color:var(--ok)}
-  .step.pending .mark{color:var(--warn)}
+  /* sidebar */
+  .side{flex:0 0 268px;width:268px;min-width:0;overflow:hidden;background:var(--side);border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;gap:22px;min-height:0}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 6px}
+  .mark{width:34px;height:34px;border-radius:9px;background:var(--acc);color:var(--acc-ink);display:flex;align-items:center;justify-content:center;font-weight:700}
+  .brand b{display:block;font-weight:700}
+  .brand div span{font-size:12px;color:var(--muted)}
+  .new{font-size:14px;font-weight:600;color:var(--acc-ink);background:var(--acc);border:0;border-radius:10px;min-height:44px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .new:hover{background:var(--acc-2)}
+  .recent{display:flex;flex-direction:column;gap:2px;min-height:0;overflow-y:auto}
+  .recent h2{margin:0;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-2);padding:0 8px 6px}
+  .recent button{text-align:left;background:none;border:0;color:var(--fg-3);border-radius:8px;padding:9px 10px;font-size:14px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .recent button:hover{background:#131C2C;color:var(--fg)}
+  .recent button[aria-current="true"]{background:var(--raise);color:var(--fg)}
+  .recent .none{font-size:13px;color:var(--muted-2);padding:0 8px}
+  .status{margin-top:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:0 8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted-2);flex:none}
+  .dot.ok{background:var(--ok)} .dot.bad{background:var(--err)}
 
-  .cursor::after{content:"▍";color:var(--acc);animation:blink 1s steps(2) infinite}
+  /* main */
+  main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 32px;border-bottom:1px solid var(--line);min-height:68px}
+  .bar h1{margin:0;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .bar .tools{display:flex;gap:8px;flex:none}
+  .ghost{font-size:14px;background:transparent;border:1px solid var(--line-3);border-radius:9px;padding:0 14px;min-height:40px;
+    display:inline-flex;align-items:center;gap:8px}
+  .ghost:hover:not(:disabled){border-color:#3B4A6A;background:#0F1726}
+  .ghost:disabled{opacity:.4;cursor:not-allowed}
+  .m-brand,.m-new{display:none}
+
+  .scroll{flex:1;overflow-y:auto;min-height:0}
+  .thread{max-width:1080px;margin:0 auto;padding:28px 32px 24px;display:flex;flex-direction:column;gap:22px}
+
+  /* welcome */
+  .hello{padding:56px 0 8px;display:flex;flex-direction:column;gap:18px}
+  .hello h2{margin:0;font-size:30px;font-weight:600;letter-spacing:-.01em}
+  .hello p{margin:0;color:var(--fg-3);max-width:620px}
+  .starters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:8px}
+  .starter{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+  .starter:hover{border-color:#2F3E5E;background:#132036}
+  .starter b{font-weight:600}
+  .starter span{font-size:13px;color:var(--muted)}
+
+  /* a turn */
+  .turn{display:flex;flex-direction:column;gap:18px;scroll-margin-top:12px}
+  .turn + .turn{border-top:1px solid var(--line);padding-top:26px}
+  .q{align-self:flex-end;background:var(--raise);border:1px solid var(--line-2);border-radius:14px 14px 4px 14px;padding:10px 16px;max-width:80%;white-space:pre-wrap;overflow-wrap:anywhere}
+  .steps{display:flex;flex-wrap:wrap;gap:8px}
+  .step{display:inline-flex;align-items:center;gap:8px;font:12px var(--mono);color:var(--muted);background:var(--deep);border:1px solid var(--line);
+    border-radius:999px;padding:6px 12px;max-width:100%}
+  .step span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .step b{color:var(--fg-2);font-weight:500}
+  .step svg{flex:none}
+  .spin{width:12px;height:12px;border:2px solid #2C3A55;border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .thinking{display:inline-flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+
+  /* answer typography */
+  .answer{font-size:16px;line-height:1.6;overflow-wrap:anywhere}
+  .answer > p,.answer > ul,.answer > ol,.answer > h1,.answer > h2,.answer > h3,.answer > blockquote,.answer > pre{max-width:780px}
+  .answer > :first-child{margin-top:0}
+  .answer p{margin:.6em 0}
+  .answer strong{color:#fff;font-weight:600}
+  .answer h1,.answer h2,.answer h3{font-size:15px;font-weight:600;margin:1.2em 0 .5em;color:var(--fg)}
+  .answer ul,.answer ol{padding-left:1.3em;margin:.6em 0}
+  .answer li{margin:.3em 0}
+  .answer code{font:13px var(--mono);background:var(--raise);padding:1px 6px;border-radius:5px}
+  .answer pre{background:var(--deep);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto}
+  .answer blockquote{margin:.8em 0;padding:2px 0 2px 14px;border-left:3px solid var(--line-3);color:var(--fg-3)}
+  .answer.streaming > :last-child::after{content:"";display:inline-block;width:7px;height:1.05em;background:var(--acc);margin-left:3px;vertical-align:-2px;animation:blink 1s steps(2) infinite}
   @keyframes blink{50%{opacity:0}}
 
-  .bot h1,.bot h2,.bot h3{margin:.9em 0 .4em;color:var(--acc);line-height:1.3}
-  .bot h1{font-size:1.25em}.bot h2{font-size:1.14em}.bot h3{font-size:1.04em}
-  .bot p{margin:.55em 0}
-  .bot ul,.bot ol{margin:.5em 0;padding-left:1.4em}
-  .bot li{margin:.25em 0}
-  .bot strong{color:#fff}
-  .bot table{border-collapse:collapse;margin:.8em 0;width:100%;font-size:.92em;display:block;overflow-x:auto}
-  .bot th,.bot td{border:1px solid var(--line);padding:7px 10px;text-align:left;white-space:nowrap}
-  .bot th{background:#16223a;color:var(--acc);font-weight:600}
-  .bot tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
-  .bot code{background:#16223a;padding:1px 5px;border-radius:4px;font-size:.9em}
-  .bot pre{background:#16223a;padding:12px;border-radius:8px;overflow-x:auto}
-  .bot pre code{background:none;padding:0}
-  .bot blockquote{border-left:3px solid var(--acc-dim);margin:.6em 0;padding-left:1em;color:var(--muted)}
+  /* kpis */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .kpi small{display:block;font-size:13px;color:var(--muted)}
+  .kpi b{display:block;font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px;color:var(--fg)}
+  .kpi:first-child b{color:var(--acc-2)}
 
-  .composer{display:flex;gap:10px;margin-top:14px;align-items:flex-end}
-  textarea{flex:1;background:var(--panel);color:var(--fg);border:1px solid var(--line);
-    border-radius:12px;padding:12px 14px;font:inherit;resize:none;max-height:180px;min-height:48px}
-  textarea:focus{outline:none;border-color:var(--acc-dim)}
-  .send{background:var(--acc);color:#04121a;border:0;font-weight:700;
-    padding:0 20px;height:48px;border-radius:12px;cursor:pointer}
-  .send:disabled{opacity:.45;cursor:not-allowed}
-  .hint{font-size:11.5px;color:var(--muted);margin-top:8px;text-align:center}
-  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
-  .chip{font-size:12px;color:var(--muted);border:1px solid var(--line);background:none;
-    border-radius:999px;padding:5px 11px;cursor:pointer}
-  .chip:hover{color:var(--acc);border-color:var(--acc-dim)}
+  /* chart + table */
+  .chartcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin:18px 0;overflow:hidden}
+  .chart{padding:20px 22px;display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--line)}
+  .chart-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .chart-head h3{margin:0;font-size:15px;font-weight:600}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .legend i.avg{width:14px;height:0;border-top:1.5px dashed var(--muted);border-radius:0}
+  .bars{display:flex;flex-direction:column;gap:8px}
+  .barrow{display:grid;grid-template-columns:minmax(90px,170px) minmax(0,1fr) 84px;align-items:center;gap:12px}
+  .barrow .lbl{font-size:14px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track{position:relative;height:22px;background:var(--side);border-radius:6px}
+  .fill{height:22px;border-radius:6px;background:var(--slate);transition:width .5s ease}
+  .fill.top{background:var(--acc)}
+  .avgline{position:absolute;top:-4px;bottom:-4px;border-left:1.5px dashed var(--muted)}
+  .barrow .val{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+  .tablewrap{overflow-x:auto}
+  .chartcard .tablewrap{border:0;border-radius:0;margin:0;width:auto}
+  .answer > .tablewrap{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin:18px 0}
+  .answer table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  .answer th{text-align:left;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:12px 18px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .answer td{padding:11px 18px;border-bottom:1px solid var(--raise);white-space:nowrap}
+  .answer tr:last-child td{border-bottom:0}
+  .answer td.num,.answer th.num{text-align:right}
+
+  /* next steps */
+  .nexts-wrap{margin:22px 0 18px}
+  .nexts-wrap h3{margin:0 0 12px;font-size:15px;font-weight:600}
+  .nexts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .next{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px}
+  .next b{font-weight:600}
+  .next p{margin:0;font-size:14px;color:var(--fg-3)}
+  .tag{align-self:flex-start;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:rgba(147,160,182,.14);color:var(--fg-3)}
+  .tag.go{background:rgba(34,211,238,.14);color:var(--acc-2)}
+  .tag.warn{background:rgba(245,158,11,.16);color:var(--amber-2)}
+
+  .meta{font-size:12px;color:var(--muted-2);font-family:var(--mono)}
+  .err{background:#24131B;border:1px solid #6B2333;color:#FECACA;border-radius:12px;padding:12px 16px;font-size:14px}
+
+  /* composer */
+  .dock{border-top:1px solid var(--line);background:var(--bg);padding:14px 32px max(18px,env(safe-area-inset-bottom))}
+  .dock-in{max-width:1016px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  .follow{display:flex;gap:8px;flex-wrap:wrap}
+  .follow button{font-size:13px;color:var(--fg-2);background:var(--panel);border:1px solid var(--line-2);border-radius:999px;padding:0 12px;min-height:36px}
+  .follow button:hover{border-color:var(--acc);color:var(--acc-2)}
+  .composer{margin:0;display:flex;gap:10px;align-items:flex-end;background:var(--panel);border:1.5px solid var(--line-3);border-radius:14px;padding:6px 6px 6px 16px}
+  .composer:focus-within{border-color:#3A5A7E}
+  .composer textarea{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:transparent;border:0;outline:none;resize:none;
+    padding:10px 0;min-height:44px;max-height:180px;line-height:1.5}
+  .composer textarea::placeholder{color:#6F7D96}
+  .send{flex:none;width:44px;height:44px;border-radius:10px;border:0;background:var(--acc);color:var(--acc-ink);display:flex;align-items:center;justify-content:center}
+  .send:disabled{opacity:.4;cursor:not-allowed}
+  .hint{font-size:12px;color:var(--muted-2)}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1E2A40;border:1px solid var(--line-3);color:var(--fg);
+    padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+
+  @media (max-width: 900px){
+    .side{display:none}
+    .bar{padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top))}
+    .bar h1{display:none}
+    .m-brand{display:flex;align-items:center;gap:10px;min-width:0}
+    .m-brand b{font-weight:700}
+    .m-new{display:inline-flex}
+    .bar .tools .wide{display:none}
+    .thread{padding:20px 16px}
+    .hello{padding-top:24px}
+    .hello h2{font-size:24px}
+    .starters{grid-template-columns:1fr}
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kpi b{font-size:20px}
+    .barrow{grid-template-columns:96px minmax(0,1fr) 64px;gap:8px}
+    .dock{padding:10px 16px max(12px,env(safe-area-inset-bottom))}
+    .follow{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px}
+    .follow button{flex:none}
+    .hint{display:none}
+    .q{max-width:90%}
+  }
+  @media (prefers-reduced-motion: reduce){ .spin,.answer.streaming > :last-child::after{animation:none} .fill{transition:none} }
 </style>
 </head>
 <body>
-<div class="shell">
-  <header>
-    <img src="/static/logo.png" alt="">
-    <div class="title">Clarity<span>{{ company }} staff analytics</span></div>
-    <div class="spacer"></div>
-    <div class="status"><span class="dot" id="dot"></span><span id="status">checking…</span></div>
-    <button class="ghost" id="reset">Clear</button>
-  </header>
+<div class="app">
+  <aside class="side" aria-label="Sidebar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">C</span>
+      <div><b>Clarity</b><span>{{ company }} · Staff</span></div>
+    </div>
+    <button type="button" class="new" data-new>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      New question
+    </button>
+    <nav class="recent" aria-label="This session">
+      <h2>This session</h2>
+      <div id="recent"><p class="none">Your questions will show here.</p></div>
+    </nav>
+    <div class="status"><span class="dot" data-dot></span><span data-status>Checking data…</span></div>
+  </aside>
 
-  <div class="log" id="log">
-    <div class="msg sys">Ask about sales, margin, campaigns, stock or customers. Every figure is queried from the dataset.</div>
-  </div>
+  <main>
+    <div class="bar">
+      <h1 id="title">New question</h1>
+      <div class="m-brand"><span class="mark" aria-hidden="true">C</span><b>Clarity</b><span class="dot" data-dot></span></div>
+      <div class="tools">
+        <button type="button" class="ghost wide" id="csv" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export CSV
+        </button>
+        <button type="button" class="ghost wide" id="copy" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Copy answer
+        </button>
+        <button type="button" class="ghost m-new" data-new aria-label="New question">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New
+        </button>
+      </div>
+    </div>
 
-  <div class="composer">
-    <textarea id="box" rows="1" placeholder="e.g. How did 2030 revenue compare to 2029, and what drove the gap?"></textarea>
-    <button class="send" id="send">Send</button>
-  </div>
-  <div class="chips" style="margin-top:10px">
-    <button class="chip">Which campaigns delivered the best ROAS last year?</button>
-    <button class="chip">Show the revenue trend by quarter since 2028</button>
-    <button class="chip">Which SKUs are closest to stocking out?</button>
-    <button class="chip">How has the channel mix shifted since 2019?</button>
-  </div>
-  <div class="hint">Enter to send, Shift+Enter for a new line</div>
+    <div class="scroll" id="scroll">
+      <div class="thread" id="thread"></div>
+    </div>
+
+    <div class="dock">
+      <div class="dock-in">
+        <div class="follow" id="follow" aria-label="Suggested follow-ups"></div>
+        <form class="composer" id="composer">
+          <label for="box" class="sr">Ask Clarity</label>
+          <textarea id="box" rows="1" placeholder="Ask about sales, margin, campaigns, stock or customers"></textarea>
+          <button type="submit" class="send" id="send" aria-label="Send question">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <div class="hint">Enter to send, Shift+Enter for a new line. Every figure is queried from the dataset.</div>
+      </div>
+    </div>
+  </main>
 </div>
 
 <script>
-marked.setOptions({ breaks:true, gfm:true });
+(() => {
+marked.setOptions({ gfm: true, breaks: false });
 
-const log=document.getElementById('log'), box=document.getElementById('box'),
-      send=document.getElementById('send'), dot=document.getElementById('dot'),
-      statusEl=document.getElementById('status');
-let busy=false;
+const thread = document.getElementById('thread');
+const scroller = document.getElementById('scroll');
+const box = document.getElementById('box');
+const sendBtn = document.getElementById('send');
+const followEl = document.getElementById('follow');
+const recentEl = document.getElementById('recent');
+const titleEl = document.getElementById('title');
+const csvBtn = document.getElementById('csv');
+const copyBtn = document.getElementById('copy');
 
-const scroll=()=>{log.scrollTop=log.scrollHeight;};
+let busy = false;
+let turns = [];          // {q, raw, el, tables}
+let stick = true;        // follow the stream unless the reader scrolls up
 
-function addUser(text){
-  const el=document.createElement('div');
-  el.className='msg user'; el.textContent=text;
-  log.appendChild(el); scroll();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const toBottom = () => { if (stick) scroller.scrollTop = scroller.scrollHeight; };
+scroller.addEventListener('scroll', () => {
+  stick = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80;
+});
+const toast = msg => { const t = el('div', 'toast'); t.textContent = msg; t.setAttribute('role', 'status'); document.body.appendChild(t); setTimeout(() => t.remove(), 1800); };
+
+const ICON_OK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+const ICON_BAD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+const STARTERS = [
+  ['Which campaigns delivered the best ROAS last year?', 'Spend, attributed sales and ROAS by campaign'],
+  ['Show the revenue trend by quarter since 2028', 'Net sales and gross profit over time'],
+  ['Which SKUs are closest to stocking out?', 'Days of cover against recent run rate'],
+  ['How has the channel mix shifted since 2019?', 'Share of net sales by channel, year by year'],
+];
+
+// ---------- special blocks the model can emit ----------
+// ```kpi   Label | Value           (headline tiles)
+// ```next  Action | Title | Detail (next-step cards)
+// ```ask   one question per line   (follow-up chips)
+function splitBlocks(raw) {
+  const blocks = { kpi: [], next: [], ask: [] };
+  let text = raw.replace(/```(kpi|next|ask)[^\n]*\n([\s\S]*?)```/g, (_, kind, body) => {
+    const lines = body.split('\n').map(l => l.trim().replace(/^[-*]\s+/, '')).filter(Boolean);
+    blocks[kind].push(...lines);
+    return kind === 'ask' ? '' : `\n\n<div data-slot="${kind}"></div>\n\n`;
+  });
+  // A block still streaming in stays hidden until it closes.
+  text = text.replace(/```(kpi|next|ask)[\s\S]*$/, '');
+  return { text, blocks };
 }
 
-function addBot(){
-  const el=document.createElement('div'); el.className='msg bot';
-  const steps=document.createElement('div'); steps.className='steps';
-  const body=document.createElement('div'); body.className='body cursor';
-  el.append(steps, body); log.appendChild(el); scroll();
-  return {el, steps, body, raw:''};
+const cells = line => line.split('|').map(s => s.trim()).filter((s, i, a) => s !== '' || (i > 0 && i < a.length - 1));
+
+function kpiHTML(lines) {
+  const items = lines.map(cells).filter(c => c.length >= 2).slice(0, 4);
+  if (!items.length) return '';
+  return `<div class="kpis">${items.map(([k, v]) => `<div class="kpi"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join('')}</div>`;
 }
 
-function addStep(bot, name, args){
-  const row=document.createElement('div'); row.className='step pending';
-  let pretty='';
-  try{ const o=JSON.parse(args||'{}');
-       pretty=Object.entries(o).map(([k,v])=>`${k}=${v}`).join('  '); }
-  catch(e){ pretty=args||''; }
-  row.innerHTML=`<span class="mark">▸</span><b></b><span class="args"></span>`;
-  row.querySelector('b').textContent=name;
-  row.querySelector('.args').textContent=pretty;
-  bot.steps.appendChild(row); scroll();
-  return row;
+function tagClass(t) {
+  t = t.toLowerCase();
+  if (/(scale|grow|invest|expand|double|keep|protect|launch|push)/.test(t)) return 'go';
+  if (/(review|fix|cut|watch|reorder|restock|urgent|risk|pause|stop|check)/.test(t)) return 'warn';
+  return '';
 }
 
-function render(bot){
-  bot.body.innerHTML=marked.parse(bot.raw);
-  bot.body.classList.add('cursor');
-  scroll();
+function nextHTML(lines) {
+  const items = lines.map(cells).filter(c => c.length >= 2).slice(0, 3);
+  if (!items.length) return '';
+  return `<div class="nexts-wrap"><h3>What I'd do next</h3><div class="nexts">${items.map(c => {
+    const [tag, title, detail] = c.length >= 3 ? c : ['', c[0], c[1]];
+    return `<div class="next">${tag ? `<span class="tag ${tagClass(tag)}">${esc(tag)}</span>` : ''}<b>${esc(title)}</b>${detail ? `<p>${esc(detail)}</p>` : ''}</div>`;
+  }).join('')}</div></div>`;
 }
 
-async function ping(){
-  // Deliberately says nothing about the model, the data or the host.
-  // This page is publicly reachable and that is all backend detail.
-  try{
-    const r=await fetch('/healthz'); const j=await r.json();
-    if(j.ok){ dot.className='dot ok'; statusEl.textContent='Connected'; }
-    else    { dot.className='dot err'; statusEl.textContent='Unavailable'; }
-  }catch(e){ dot.className='dot err'; statusEl.textContent='Offline'; }
+// ---------- numbers in table cells ----------
+function parseNum(s) {
+  const t = String(s).replace(/−/g, '-').trim();
+  const m = t.match(/^[^\d\-+.]*([-+]?\d[\d,]*(?:\.\d+)?|[-+]?\.\d+)\s*([kKmMbB](?![a-z]))?\s*(%|x|×|pp|days?|units?|orders?|pcs|packs?|SKUs?)?/i);
+  if (!m) return null;
+  const rest = t.slice(m.index + m[0].length).trim();
+  if (/[a-z0-9]/i.test(rest)) return null;          // "12 Apr – 29 Apr", "3 of 7"
+
+  const pre = t.slice(0, t.indexOf(m[1]));
+  if (/[a-z]{4,}/i.test(pre)) return null;          // "Week 3", "Q1 2025" style labels
+  let n = parseFloat(m[1].replace(/,/g, ''));
+  const mult = { k: 1e3, m: 1e6, b: 1e9 }[(m[2] || '').toLowerCase()];
+  if (mult) n *= mult;
+  return isFinite(n) ? n : null;
 }
-ping();
 
-async function ask(text){
-  if(busy || !text.trim()) return;
-  busy=true; send.disabled=true;
-  addUser(text); box.value=''; box.style.height='auto';
-  const bot=addBot();
-  let pending=null;
+function formatLike(sample, n) {
+  const t = String(sample).trim();
+  const m = t.match(/^([^\d\-+.]*)([-+]?[\d,]*\.?\d+)\s*([kKmMbB])?(.*)$/);
+  if (!m) return n.toFixed(2);
+  const [, pre, num, mag, post] = m;
+  let v = n;
+  const div = { k: 1e3, m: 1e6, b: 1e9 }[(mag || '').toLowerCase()];
+  if (div) v = n / div;
+  const dec = (num.split('.')[1] || '').length;
+  const s = v.toLocaleString('en-SG', { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: num.includes(',') || Math.abs(v) >= 10000 });
+  return `${pre}${s}${mag || ''}${post}`;
+}
 
-  try{
-    const res=await fetch('/chat',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({message:text})
+// Turn the rendered markdown tables into a chart card when they hold a
+// comparison: a label column, three or more rows, and a numeric column.
+function enhanceTables(root, withCharts) {
+  root.querySelectorAll('table').forEach(table => {
+    if (table.closest('.tablewrap')) return;
+    const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+    const rows = [...table.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
+    const numericCols = headers.map((_, i) => rows.length > 0 && rows.every(r => r[i] === undefined || r[i] === '' || r[i] === '—' || parseNum(r[i]) !== null));
+    table.querySelectorAll('tr').forEach(tr => [...tr.children].forEach((c, i) => { if (i > 0 && numericCols[i]) c.classList.add('num'); }));
+
+    const wrap = el('div', 'tablewrap');
+    table.replaceWith(wrap); wrap.appendChild(table);
+    wrap._data = { headers, rows };
+
+    if (!withCharts || rows.length < 3 || rows.length > 24 || numericCols[0]) return;
+    let col = -1;
+    for (let i = headers.length - 1; i > 0; i--) if (numericCols[i]) { col = i; break; }
+    if (col < 0) return;
+    const vals = rows.map(r => parseNum(r[col]));
+    if (vals.some(v => v === null || v < 0) || Math.max(...vals) <= 0) return;
+
+    const max = Math.max(...vals);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const top = vals.indexOf(max);
+    const card = el('section', 'chartcard');
+    const chart = el('div', 'chart');
+    chart.innerHTML =
+      `<div class="chart-head"><h3>${esc(headers[col])} by ${esc(headers[0].toLowerCase())}</h3>` +
+      `<div class="legend"><span><i style="background:var(--acc)"></i>Highest</span><span><i style="background:var(--slate)"></i>Others</span>` +
+      `<span><i class="avg"></i>Average ${esc(formatLike(rows[0][col], avg))}</span></div></div>`;
+    const bars = el('div', 'bars');
+    rows.forEach((r, i) => {
+      const row = el('div', 'barrow');
+      row.innerHTML = `<span class="lbl" title="${esc(r[0])}">${esc(r[0])}</span>` +
+        `<div class="track"><div class="fill${i === top ? ' top' : ''}" style="width:${(vals[i] / max * 100).toFixed(1)}%"></div>` +
+        `<div class="avgline" style="left:${(avg / max * 100).toFixed(1)}%"></div></div>` +
+        `<span class="val">${esc(r[col])}</span>`;
+      bars.appendChild(row);
     });
-    if(!res.ok || !res.body){
-      const j=await res.json().catch(()=>({error:'Request failed'}));
-      throw new Error(j.error||'Request failed');
+    chart.appendChild(bars);
+    wrap.replaceWith(card);
+    card.append(chart, wrap);
+  });
+}
+
+function render(turn, final) {
+  const { text, blocks } = splitBlocks(turn.raw);
+  const html = DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ['data-slot'] });
+  turn.answer.innerHTML = html;
+  turn.answer.querySelectorAll('[data-slot="kpi"]').forEach((s, i) => { s.outerHTML = i === 0 ? kpiHTML(blocks.kpi) : ''; });
+  turn.answer.querySelectorAll('[data-slot="next"]').forEach((s, i) => { s.outerHTML = i === 0 ? nextHTML(blocks.next) : ''; });
+  enhanceTables(turn.answer, final);
+  turn.answer.classList.toggle('streaming', !final);
+  turn.ask = blocks.ask.slice(0, 3);
+  turn.tables = [...turn.answer.querySelectorAll('.tablewrap')].map(w => w._data).filter(Boolean);
+}
+
+// ---------- page state ----------
+function welcome() {
+  thread.innerHTML = '';
+  const hello = el('section', 'hello');
+  hello.innerHTML = `<h2>What do you want to know?</h2>
+    <p>Ask about sales, margin, campaigns, stock or customers. Clarity runs the numbers against the {{ company }} dataset and shows you which queries it used.</p>`;
+  const grid = el('div', 'starters');
+  STARTERS.forEach(([q, sub]) => {
+    const b = el('button', 'starter'); b.type = 'button';
+    b.innerHTML = `<b>${esc(q)}</b><span>${esc(sub)}</span>`;
+    b.addEventListener('click', () => ask(q));
+    grid.appendChild(b);
+  });
+  hello.appendChild(grid);
+  thread.appendChild(hello);
+  setFollow([]);
+  titleEl.textContent = 'New question';
+  csvBtn.disabled = copyBtn.disabled = true;
+}
+
+function setFollow(list) {
+  followEl.innerHTML = '';
+  list.forEach(q => {
+    const b = el('button'); b.type = 'button'; b.textContent = q;
+    b.addEventListener('click', () => ask(q));
+    followEl.appendChild(b);
+  });
+  followEl.hidden = !list.length;
+}
+
+function paintRecent(active) {
+  recentEl.innerHTML = '';
+  if (!turns.length) { recentEl.innerHTML = '<p class="none">Your questions will show here.</p>'; return; }
+  [...turns].reverse().forEach(t => {
+    const b = el('button'); b.type = 'button'; b.textContent = t.q; b.title = t.q;
+    if (t === active) b.setAttribute('aria-current', 'true');
+    b.addEventListener('click', () => { t.el.scrollIntoView({ behavior: 'smooth', block: 'start' }); paintRecent(t); titleEl.textContent = t.q; });
+    recentEl.appendChild(b);
+  });
+}
+
+function stepLabel(name, args) {
+  let parts = [];
+  try {
+    const o = JSON.parse(args || '{}');
+    parts = Object.entries(o).filter(([, v]) => v !== null && v !== '' && v !== undefined)
+      .map(([k, v]) => (k === 'start' || k === 'end') ? String(v) : `${k}=${Array.isArray(v) ? v.join(',') : v}`);
+  } catch (e) { if (args) parts = [args]; }
+  return [name, ...parts].join(' · ');
+}
+
+// ---------- the turn ----------
+async function ask(text) {
+  text = (text || '').trim();
+  if (busy || !text) return;
+  busy = true; sendBtn.disabled = true; stick = true;
+  if (!turns.length) thread.innerHTML = '';
+  setFollow([]);
+  box.value = ''; box.style.height = 'auto';
+
+  const t = { q: text, raw: '', tables: [], ask: [] };
+  t.el = el('article', 'turn');
+  t.el.appendChild(el('div', 'q')).textContent = text;
+  t.steps = el('div', 'steps'); t.steps.hidden = true;
+  t.status = el('div', 'thinking', '<span class="spin"></span>Reading the question');
+  t.answer = el('div', 'answer');
+  t.el.append(t.steps, t.status, t.answer);
+  thread.appendChild(t.el);
+  turns.push(t);
+  paintRecent(t);
+  titleEl.textContent = text;
+  t.el.scrollIntoView({ block: 'start' });
+
+  let pending = [];
+  const started = performance.now();
+  try {
+    const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text }) });
+    if (!res.ok || !res.body) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || 'The request failed. Try again in a moment.');
     }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '', failed = false;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const part of parts) {
+        const line = part.split('\n').find(l => l.startsWith('data:'));
+        if (!line) continue;
+        let ev; try { ev = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
 
-    const reader=res.body.getReader(), dec=new TextDecoder();
-    let buffer='';
-    while(true){
-      const {value, done}=await reader.read();
-      if(done) break;
-      buffer+=dec.decode(value,{stream:true});
-      const parts=buffer.split('\n\n'); buffer=parts.pop();
-      for(const part of parts){
-        const line=part.split('\n').find(l=>l.startsWith('data:'));
-        if(!line) continue;
-        let ev; try{ ev=JSON.parse(line.slice(5).trim()); }catch(e){ continue; }
-
-        if(ev.type==='delta'){ bot.raw+=ev.text; render(bot); }
-        else if(ev.type==='retract'){ bot.raw=''; bot.body.innerHTML=''; }
-        else if(ev.type==='tool'){ pending=addStep(bot, ev.name, ev.arguments); }
-        else if(ev.type==='tool_done'){
-          if(pending){ pending.classList.remove('pending');
-            pending.querySelector('.mark').textContent = ev.ok ? '✓' : '✗'; pending=null; }
-        }
-        else if(ev.type==='done'){ bot.body.classList.remove('cursor'); }
-        else if(ev.type==='error'){
-          bot.el.className='msg err';
-          bot.body.classList.remove('cursor');
-          bot.body.textContent=ev.message;
+        if (ev.type === 'delta') {
+          t.status.hidden = true;
+          t.raw += ev.text; render(t, false); toBottom();
+        } else if (ev.type === 'retract') {
+          t.raw = ''; t.answer.innerHTML = '';
+        } else if (ev.type === 'tool') {
+          t.steps.hidden = false;
+          t.status.hidden = false;
+          t.status.innerHTML = '<span class="spin"></span>Querying the data';
+          const s = el('div', 'step');
+          s.innerHTML = `<span class="spin"></span><span></span>`;
+          s.lastChild.textContent = stepLabel(ev.name, ev.arguments);
+          s.title = s.lastChild.textContent;
+          t.steps.appendChild(s); pending.push(s); toBottom();
+        } else if (ev.type === 'tool_done') {
+          const s = pending.shift();
+          if (s) {
+            s.firstChild.outerHTML = ev.ok ? ICON_OK : ICON_BAD;
+            if (typeof ev.rows === 'number') s.lastChild.textContent += ` · ${ev.rows} row${ev.rows === 1 ? '' : 's'}`;
+          }
+        } else if (ev.type === 'error') {
+          failed = true;
+          t.status.hidden = true;
+          t.answer.innerHTML = ''; t.answer.appendChild(el('div', 'err')).textContent = ev.message;
+        } else if (ev.type === 'done') {
+          t.elapsed = ev.elapsed_s;
         }
       }
     }
-  }catch(err){
-    bot.el.className='msg err';
-    bot.body.classList.remove('cursor');
-    bot.body.textContent=err.message||'Network error.';
-  }finally{
-    bot.body.classList.remove('cursor');
-    busy=false; send.disabled=false; box.focus(); scroll();
+    if (!failed) {
+      render(t, true);
+      const n = t.steps.children.length;
+      const secs = t.elapsed ?? ((performance.now() - started) / 1000).toFixed(1);
+      t.el.appendChild(el('div', 'meta', esc(`${n} quer${n === 1 ? 'y' : 'ies'} · ${secs}s`)));
+    }
+  } catch (err) {
+    t.status.hidden = true;
+    t.answer.innerHTML = ''; t.answer.appendChild(el('div', 'err')).textContent = err.message || 'Network error.';
+  } finally {
+    t.status.hidden = true;
+    t.answer.classList.remove('streaming');
+    pending.forEach(s => { s.firstChild.outerHTML = ICON_BAD; });
+    setFollow(t.ask || []);
+    csvBtn.disabled = !t.tables.length;
+    copyBtn.disabled = !t.raw.trim();
+    busy = false; sendBtn.disabled = false;
+    if (matchMedia('(min-width: 901px)').matches) box.focus();
+    toBottom();
   }
 }
 
-send.onclick=()=>ask(box.value);
-box.addEventListener('keydown',e=>{
-  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); ask(box.value); }
+// ---------- toolbar ----------
+const lastAnswered = () => [...turns].reverse().find(t => t.raw.trim());
+
+csvBtn.addEventListener('click', () => {
+  const t = lastAnswered(); if (!t || !t.tables.length) return;
+  const q = v => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const csv = t.tables.map(({ headers, rows }) => [headers, ...rows].map(r => r.map(q).join(',')).join('\n')).join('\n\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = el('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'clarity-' + t.q.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 48).replace(/-$/, '') + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
-box.addEventListener('input',()=>{
-  box.style.height='auto'; box.style.height=Math.min(box.scrollHeight,180)+'px';
+
+copyBtn.addEventListener('click', async () => {
+  const t = lastAnswered(); if (!t) return;
+  const { text, blocks } = splitBlocks(t.raw);
+  let out = text.replace(/<div data-slot="kpi"><\/div>/, blocks.kpi.map(l => '- ' + cells(l).join(': ')).join('\n'))
+                .replace(/<div data-slot="next"><\/div>/, blocks.next.length ? "What I'd do next:\n" + blocks.next.map(l => '- ' + cells(l).join(': ')).join('\n') : '')
+                .replace(/<div data-slot="\w+"><\/div>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  try { await navigator.clipboard.writeText(out); toast('Answer copied'); }
+  catch (e) { toast('Copy is blocked in this browser'); }
 });
-document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>ask(c.textContent));
-document.getElementById('reset').onclick=async()=>{
-  await fetch('/reset',{method:'POST'});
-  log.innerHTML='<div class="msg sys">History cleared.</div>';
-};
+
+// ---------- composer ----------
+document.getElementById('composer').addEventListener('submit', e => { e.preventDefault(); ask(box.value); });
+box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask(box.value); } });
+box.addEventListener('input', () => { box.style.height = 'auto'; box.style.height = Math.min(box.scrollHeight, 180) + 'px'; });
+
+document.querySelectorAll('[data-new]').forEach(b => b.addEventListener('click', async () => {
+  if (busy) return;
+  try { await fetch('/reset', { method: 'POST' }); } catch (e) {}
+  turns = []; paintRecent(); welcome(); box.focus();
+}));
+
+// ---------- status ----------
+fetch('/healthz').then(r => r.json()).then(j => {
+  document.querySelectorAll('[data-dot]').forEach(d => d.classList.add(j.ok ? 'ok' : 'bad'));
+  document.querySelector('[data-status]').textContent = j.ok ? 'Data connected' : 'Unavailable right now';
+}).catch(() => {
+  document.querySelectorAll('[data-dot]').forEach(d => d.classList.add('bad'));
+  document.querySelector('[data-status]').textContent = 'Offline';
+});
+
+if (matchMedia('(max-width: 900px)').matches) box.placeholder = 'Ask a question about the data';
+welcome();
+})();
 </script>
 </body>
 </html>

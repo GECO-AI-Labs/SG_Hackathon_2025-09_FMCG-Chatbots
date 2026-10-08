@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" width="480" height="360" role="img" aria-label="Cashews, Honey">
+<rect width="480" height="360" fill="#F8E2A8"/>
+<circle cx="78" cy="70" r="120" fill="#FFFFFF" fill-opacity=".28"/>
+<circle cx="430" cy="300" r="90" fill="#FFFFFF" fill-opacity=".18"/>
+
+<g transform="translate(240,322) scale(0.98)">
+  <ellipse cx="0" cy="2" rx="104" ry="10" fill="#2A1D14" fill-opacity=".12"/>
+  <path d="M-92,-236 L-92.0,-236 L-82.8,-232 L-73.6,-236 L-64.4,-232 L-55.2,-236 L-46.0,-232 L-36.8,-236 L-27.6,-232 L-18.4,-236 L-9.2,-232 L0.0,-236 L9.2,-232 L18.4,-236 L27.6,-232 L36.8,-236 L46.0,-232 L55.2,-236 L64.4,-232 L73.6,-236 L82.8,-232 L92.0,-236 L92,-236 L92,-222 C98,-160 100,-60 96,-12 C95,-4 88,0 80,0
+           L-80,0 C-88,0 -95,-4 -96,-12 C-100,-60 -98,-160 -92,-222Z"
+        fill="#E3A43A" stroke="#2A1D14" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M-92,-222 L92,-222" stroke="#2A1D14" stroke-width="2" stroke-opacity=".6"/>
+  <path d="M-96,-30 C-40,-18 40,-18 96,-30 L96,-12 C95,-4 88,0 80,0 L-80,0 C-88,0 -95,-4 -96,-12Z"
+        fill="#B9822A"/>
+  <path d="M-92,-222 C-98,-160 -100,-60 -96,-12 C-95,-4 -88,0 -80,0 L80,0 C88,0 95,-4 96,-12
+           C100,-60 98,-160 92,-222Z" fill="none" stroke="#2A1D14" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M-74,-200 C-80,-150 -80,-90 -76,-50" fill="none" stroke="#fff" stroke-opacity=".22"
+        stroke-width="8" stroke-linecap="round"/>
+  <rect x="-62" y="-196" width="124" height="22" rx="11" fill="#2A1D14" stroke="#2A1D14" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="0" y="-180" text-anchor="middle" font-family="'Bricolage Grotesque','DM Sans',sans-serif"
+        font-weight="700" font-size="14" letter-spacing="1" fill="#F6C453">C4N</text>
+  <circle cx="0" cy="-104" r="56" fill="#FBF5EC" stroke="#2A1D14" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <g transform="translate(0,-104) scale(1.75)"><path d="M-6,-20 C-22,-14 -22,10 -6,18 C6,24 20,18 20,8 C20,2 14,0 9,4 C3,8 -4,4 -5,-4 C-6,-10 -1,-14 -2,-18 C-3,-21 -4,-21 -6,-20Z" fill="#EDC07A" stroke="#2A1D14" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12,-6 C-14,4 -8,12 0,14" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/></g>
+  <g transform="translate(58,-150)">
+    <circle r="20" fill="#FFFFFF" stroke="#2A1D14" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M0,-9 C4,-3 7,1 7,4 A7,7 0 0 1 -7,4 C-7,1 -4,-3 0,-9Z" fill="#F2B533" stroke="#2A1D14" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+</g>
+<g transform="translate(93.0,296.5) rotate(-6) scale(0.96)"><path d="M-6,-20 C-22,-14 -22,10 -6,18 C6,24 20,18 20,8 C20,2 14,0 9,4 C3,8 -4,4 -5,-4 C-6,-10 -1,-14 -2,-18 C-3,-21 -4,-21 -6,-20Z" fill="#EDC07A" stroke="#2A1D14" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12,-6 C-14,4 -8,12 0,14" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(121.1,327.7) rotate(18) scale(1.09)"><path d="M-6,-20 C-22,-14 -22,10 -6,18 C6,24 20,18 20,8 C20,2 14,0 9,4 C3,8 -4,4 -5,-4 C-6,-10 -1,-14 -2,-18 C-3,-21 -4,-21 -6,-20Z" fill="#EDC07A" stroke="#2A1D14" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12,-6 C-14,4 -8,12 0,14" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(65.8,334.1) rotate(6) scale(1.06)"><path d="M-6,-20 C-22,-14 -22,10 -6,18 C6,24 20,18 20,8 C20,2 14,0 9,4 C3,8 -4,4 -5,-4 C-6,-10 -1,-14 -2,-18 C-3,-21 -4,-21 -6,-20Z" fill="#EDC07A" stroke="#2A1D14" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12,-6 C-14,4 -8,12 0,14" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(394.7,302.0) rotate(5) scale(0.93)"><path d="M-6,-20 C-22,-14 -22,10 -6,18 C6,24 20,18 20,8 C20,2 14,0 9,4 C3,8 -4,4 -5,-4 C-6,-10 -1,-14 -2,-18 C-3,-21 -4,-21 -6,-20Z" fill="#EDC07A" stroke="#2A1D14" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12,-6 C-14,4 -8,12 0,14" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(354.4,335.3) rotate(28) scale(0.98)"><path d="M-6,-20 C-22,-14 -22,10 -6,18 C6,24 20,18 20,8 C20,2 14,0 9,4 C3,8 -4,4 -5,-4 C-6,-10 -1,-14 -2,-18 C-3,-21 -4,-21 -6,-20Z" fill="#EDC07A" stroke="#2A1D14" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12,-6 C-14,4 -8,12 0,14" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/></g><g transform="translate(414.1,330.6) rotate(-11) scale(0.96)"><path d="M-6,-20 C-22,-14 -22,10 -6,18 C6,24 20,18 20,8 C20,2 14,0 9,4 C3,8 -4,4 -5,-4 C-6,-10 -1,-14 -2,-18 C-3,-21 -4,-21 -6,-20Z" fill="#EDC07A" stroke="#2A1D14" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12,-6 C-14,4 -8,12 0,14" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.4" stroke-linecap="round"/></g>
+</svg>

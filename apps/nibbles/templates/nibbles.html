@@ -2,175 +2,601 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chat with {{ company }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2A1D14">
+<title>Nibbles · {{ company }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --tan:#b9ad95; --tan-d:#a8987d; --bg:#d8d1bf; --ink:#2a261f;
-    --muted:#6f6657; --card:#f7f4ed; --line:#e4e0d8; --user:#e9e3d8;
+    --page:#F3ECE1; --ink:#2A1D14; --muted:#6B5A4C; --muted-2:#5B4A3D;
+    --card:#FFFFFF; --line:#E8DCCB; --line-2:#E3D6C4; --line-3:#F0E6D8;
+    --bot:#F7EFE3; --chat-bg:#FFFDF9; --cream:#FBF5EC; --field:#FBF7F1;
+    --accent:#B4410F; --accent-d:#8A300A; --gold:#F6C453; --soft:#FBEFD9;
+    --ok-fg:#2F5D3A; --ok-bg:#EAF4EC; --warn-fg:#8A3A06; --warn-bg:#FEF1DC;
+    --display:'Bricolage Grotesque','DM Sans',system-ui,sans-serif;
+    --body:'DM Sans','PingFang SC','Microsoft YaHei','Noto Sans SC',system-ui,sans-serif;
   }
   *{box-sizing:border-box}
-  body{margin:0;padding:24px;min-height:100vh;background:var(--bg);color:var(--ink);
-    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,
-    "Apple Color Emoji","Segoe UI Emoji";
-    display:flex;align-items:center;justify-content:center;position:relative}
-  .logo{position:absolute;top:28px;left:28px}
-  .logo img{max-height:52px;width:auto}
-  .chat{width:min(760px,94vw);height:min(90vh,780px);background:#fff;border-radius:20px;
-    box-shadow:0 10px 36px rgba(0,0,0,.10);display:flex;flex-direction:column;
-    overflow:hidden;border:1px solid #eee}
-  .header{background:var(--tan);color:#fff;padding:16px 18px}
-  .header h1{margin:0;font-size:16px;font-weight:700}
-  .header .sub{margin-top:4px;font-size:12px;opacity:.95}
-  .messages{flex:1;overflow-y:auto;padding:16px 16px 4px}
-  .msg{max-width:86%;padding:10px 13px;margin:0 0 12px;border-radius:14px;
-    font-size:14.5px;box-shadow:0 1px 0 rgba(0,0,0,.04);white-space:pre-wrap;
-    overflow-wrap:anywhere}
-  .msg.bot{background:var(--card);border:1px solid var(--line)}
-  .msg.user{background:var(--user);margin-left:auto}
-  .msg.err{background:#fdf0ef;border:1px solid #e6b5ae;color:#8a3025}
-  .cursor::after{content:"▍";color:var(--tan-d);animation:blink 1s steps(2) infinite}
-  @keyframes blink{50%{opacity:0}}
+  [hidden]{display:none !important}
+  html,body{margin:0;height:100%}
+  body{background:var(--page);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)} a:hover{color:var(--accent-d)}
+  button{font:inherit;cursor:pointer}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
-  .cards{display:flex;gap:10px;overflow-x:auto;padding:2px 0 12px;margin:0 0 6px}
-  .card{min-width:190px;max-width:190px;background:var(--card);border:1px solid var(--line);
-    border-radius:13px;padding:11px 12px}
-  .card .name{font-weight:650;font-size:13.5px;line-height:1.35}
-  .card .meta{color:var(--muted);font-size:11.5px;margin-top:3px}
-  .card .price{margin-top:7px;font-weight:700;font-size:14px;color:#6b5c3f}
-  .card .tag{display:inline-block;margin:6px 4px 0 0;padding:2px 8px;border-radius:999px;
-    background:#efe9dc;border:1px solid #ded5c4;font-size:10.5px;color:#6b5c3f}
-  .card .allergen{color:#8a3025;background:#fdf0ef;border-color:#e6b5ae}
-  .label{font-size:11.5px;color:var(--muted);margin:2px 0 6px;letter-spacing:.3px;
-    text-transform:uppercase}
+  .page{min-height:100%;padding:28px 24px 32px;display:flex;flex-direction:column}
+  .wrap{width:100%;max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:22px;flex:1;min-height:0}
 
-  .footer{padding:12px;background:#fff;border-top:1px solid #eee;display:flex;gap:8px}
-  input[type=text]{flex:1;border:1px solid var(--line);border-radius:12px;
-    padding:12px 14px;font:inherit;outline:none}
-  input[type=text]:focus{border-color:var(--tan-d)}
-  button{background:var(--tan-d);color:#fff;border:0;border-radius:12px;padding:0 18px;
-    font-weight:700;cursor:pointer;font-size:14px}
-  button:disabled{opacity:.5;cursor:not-allowed}
+  /* top bar */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+  .mark{width:44px;height:44px;border-radius:12px;background:var(--ink);color:var(--gold);
+    display:flex;align-items:center;justify-content:center;font:700 17px var(--display)}
+  .brand b{display:block;font:700 20px var(--display);letter-spacing:-.01em}
+  .brand span{font-size:13px;color:var(--muted)}
+  .order-btn{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--ink);font-weight:600;
+    padding:10px 16px;min-height:44px;border-radius:999px;border:1px solid var(--line-2)}
+  .order-btn:hover{border-color:#CDB89C}
+  .count{background:var(--accent);color:#fff;border-radius:999px;font-size:12px;padding:1px 8px;min-width:22px;text-align:center}
+  .count[data-n="0"]{background:#E8DCCB;color:var(--muted)}
+
+  .layout{display:flex;gap:24px;align-items:stretch;flex:1;min-height:0}
+
+  /* intro column */
+  .intro{flex:0 0 340px;display:flex;flex-direction:column;gap:16px}
+  .hero{background:var(--ink);color:#FBF5EC;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:14px}
+  .live{display:inline-flex;align-self:flex-start;align-items:center;gap:8px;background:rgba(246,196,83,.16);
+    color:var(--gold);font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#5BD08A}
+  .dot.off{background:#E5A04B}
+  .hero h1{margin:0;font:700 34px/1.1 var(--display);letter-spacing:-.02em}
+  .hero p{margin:0;color:#D9CBBA}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:14px}
+  .panel h2{margin:0;font-size:15px;font-weight:700}
+  .help{display:flex;gap:12px;align-items:flex-start;text-align:left;background:none;border:0;padding:0;color:inherit}
+  .help .ic{flex:none;width:36px;height:36px;border-radius:10px;background:var(--soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center}
+  .help b{display:block;font-weight:600}
+  .help small{font-size:14px;color:var(--muted)}
+  .help:hover b{color:var(--accent)}
+  .person{background:var(--cream);border:1px solid var(--line);border-radius:20px;padding:18px 22px;display:flex;
+    gap:12px;align-items:center;font-size:14px;color:var(--muted-2)}
+  .person strong{color:var(--ink)}
+  .linkish{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font-size:inherit}
+
+  /* chat */
+  .chat{flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:24px;
+    box-shadow:0 1px 2px rgba(42,29,20,.04),0 12px 32px rgba(42,29,20,.06);
+    display:flex;flex-direction:column;overflow:hidden;height:calc(100vh - 150px);min-height:560px}
+  .chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line-3)}
+  .who{display:flex;align-items:center;gap:12px;min-width:0}
+  .ava{flex:none;width:40px;height:40px;border-radius:50%;background:var(--gold);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;font:700 16px var(--display)}
+  .who b{display:block;font-weight:700}
+  .who span{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+  .ghost{font-size:14px;font-weight:500;color:var(--muted-2);background:transparent;border:1px solid var(--line-2);
+    border-radius:999px;padding:10px 16px;min-height:44px}
+  .ghost:hover{border-color:#CDB89C;color:var(--ink)}
+  .m-order{display:none} .who .m-only{display:none}
+
+  .log{position:relative;flex:1;overflow-y:auto;padding:28px 24px;display:flex;flex-direction:column;gap:20px;background:var(--chat-bg);scroll-behavior:smooth}
+  .row{display:flex;gap:10px;align-items:flex-start}
+  .row .ava{width:28px;height:28px;font-size:13px}
+  .stack{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+  .bubble{background:var(--bot);border-radius:18px 18px 18px 6px;padding:12px 16px;align-self:flex-start;max-width:620px;
+    white-space:pre-wrap;overflow-wrap:anywhere}
+  .bubble.err{background:#FDF0EF;color:#8A3025;border:1px solid #EBC3BC}
+  .me{align-self:flex-end;background:var(--ink);color:#FBF5EC;border-radius:18px 18px 6px 18px;padding:12px 16px;
+    max-width:70%;white-space:pre-wrap;overflow-wrap:anywhere}
+  .typing{display:inline-flex;gap:4px;padding:4px 0}
+  .typing i{width:7px;height:7px;border-radius:50%;background:#B9A48B;animation:bob 1.1s infinite ease-in-out}
+  .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+  @keyframes bob{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-4px);opacity:1}}
+  .label{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+  /* product cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:14px}
+  .card{background:#fff;border:1px solid #EADFCF;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+  .shot{position:relative;aspect-ratio:4/3;background:var(--cream)}
+  .shot img{width:100%;height:100%;object-fit:cover;display:block}
+  .pill{position:absolute;top:10px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
+  .pill.size{left:10px;background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(42,29,20,.12)}
+  .pill.best{right:10px;background:var(--ink);color:var(--gold)}
+  .card-body{padding:14px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .card h3{margin:0;font-size:15px;font-weight:700;line-height:1.3}
+  .price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .price b{font:700 20px var(--display)}
+  .price span{font-size:13px;color:var(--muted)}
+  .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--ok-fg);background:var(--ok-bg);
+    padding:3px 8px;border-radius:999px}
+  .allergen{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--warn-fg);background:var(--warn-bg);
+    padding:6px 8px;border-radius:8px}
+  .add{margin-top:auto;font-size:14px;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:10px;min-height:44px;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .add:hover{background:var(--accent-d)}
+  .add.added{background:var(--ok-fg)}
+  .also .card-body{gap:8px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-size:14px;font-weight:500;color:var(--ink);background:#fff;border:1px solid #DCCBB4;border-radius:999px;
+    padding:9px 14px;min-height:40px}
+  .chip:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* composer */
+  .composer{margin:0;padding:14px 24px 18px;border-top:1px solid var(--line-3);background:#fff;display:flex;flex-direction:column;gap:8px}
+  .field{display:flex;gap:10px;align-items:center;background:var(--field);border:1.5px solid var(--line-2);border-radius:16px;padding:6px 6px 6px 18px}
+  .field:focus-within{border-color:#C9A27A}
+  .field input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:transparent;border:0;outline:none;min-height:44px}
+  .send{flex:none;width:44px;height:44px;border-radius:12px;border:0;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center}
+  .send:disabled{opacity:.45;cursor:not-allowed}
+  .fine{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .fine .geco{display:inline-flex;align-items:center;gap:6px}
+  .fine img{height:14px;width:auto}
+
+  /* order dialog */
+  dialog{border:0;padding:0;border-radius:22px;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px);
+    color:var(--ink);background:#fff;box-shadow:0 30px 80px rgba(42,29,20,.3)}
+  dialog::backdrop{background:rgba(42,29,20,.45)}
+  .dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+  .dlg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line-3)}
+  .dlg-head h2{margin:0;font:700 22px var(--display)}
+  .x{width:44px;height:44px;border-radius:12px;border:1px solid var(--line-2);background:#fff;display:flex;align-items:center;justify-content:center}
+  .dlg-body{padding:18px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+  .lines{display:flex;flex-direction:column;gap:10px}
+  .line{display:flex;align-items:center;gap:12px}
+  .line img{width:56px;height:42px;object-fit:cover;border-radius:8px;flex:none}
+  .line .nm{flex:1;min-width:0;font-size:14px;font-weight:600}
+  .line .nm small{display:block;font-weight:400;color:var(--muted)}
+  .qty{display:flex;align-items:center;border:1px solid var(--line-2);border-radius:10px}
+  .qty button{width:36px;height:36px;border:0;background:none;font-size:18px;color:var(--ink)}
+  .qty span{min-width:24px;text-align:center;font-weight:600}
+  .total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--line-2);padding-top:12px}
+  .total b{font:700 22px var(--display)}
+  .note{font-size:13px;color:var(--muted);background:var(--cream);border-radius:12px;padding:10px 12px}
+  .empty{font-size:14px;color:var(--muted)}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form .full{grid-column:1 / -1}
+  .form label{min-width:0;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted-2)}
+  .form input,.form textarea{font:inherit;font-size:16px;font-weight:400;color:var(--ink);background:var(--field);border:1.5px solid var(--line-2);
+    border-radius:12px;padding:10px 12px;min-height:44px;width:100%}
+  .form textarea{min-height:72px;resize:vertical}
+  .primary{font-size:15px;font-weight:700;color:#fff;background:var(--accent);border:0;border-radius:12px;min-height:48px;padding:0 18px}
+  .primary:hover{background:var(--accent-d)}
+  .primary:disabled{opacity:.5;cursor:not-allowed}
+  .form-err{color:#8A3025;font-size:13px;min-height:1em}
+  .done-msg{background:var(--ok-bg);color:var(--ok-fg);border-radius:12px;padding:14px;font-weight:500}
+
+  /* phone */
+  @media (max-width: 900px){
+    .page{padding:0}
+    .wrap{gap:0;max-width:none}
+    .top,.intro{display:none}
+    .chat{height:100dvh;min-height:0;border:0;border-radius:0;box-shadow:none}
+    .chat-head{background:var(--ink);color:#FBF5EC;border:0;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
+    .who span{color:#D9CBBA} .who .ava{color:var(--ink)} .who .d-only{display:none} .who .m-only{display:inline}
+    .chat-head .ghost{display:none}
+    .m-order{display:flex;position:relative;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.08);
+      color:#FBF5EC;border:0;align-items:center;justify-content:center}
+    .m-order .count{position:absolute;top:3px;right:2px;font-size:11px;padding:0 5px;min-width:18px;background:var(--gold);color:var(--ink)}
+    .m-order .count[data-n="0"]{display:none}
+    .m-new{display:flex;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.08);color:#FBF5EC;border:0;align-items:center;justify-content:center}
+    .log{padding:18px 16px 12px;gap:14px}
+    .row .ava{display:none}
+    .bubble{font-size:14px;max-width:290px}
+    .me{font-size:14px;max-width:80%}
+    .cards{display:flex;overflow-x:auto;gap:12px;margin:0 -16px;padding:0 16px 4px;scroll-snap-type:x mandatory}
+    .card{flex:none;width:220px;scroll-snap-align:start}
+    .chips{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px}
+    .chip{flex:none;font-size:13px}
+    .composer{padding:10px 16px max(14px,env(safe-area-inset-bottom));border:0}
+    .fine{display:none}
+  }
+  @media (min-width: 901px){ .m-new{display:none} }
+  @media (prefers-reduced-motion: reduce){ .typing i{animation:none} .log{scroll-behavior:auto} }
 </style>
 </head>
 <body>
-  <div class="logo"><img src="/static/logo.png" alt=""></div>
-  <div class="chat">
-    <div class="header">
-      <h1>Chat with {{ company }}</h1>
-      <div class="sub">We reply 8am to 5pm Singapore time. Ask about any product, price or pack size.</div>
+<div class="page">
+<div class="wrap">
+
+  <header class="top">
+    <a class="brand" href="/" aria-label="{{ company }} home">
+      <span class="mark" aria-hidden="true">C4N</span>
+      <span><b>{{ company }}</b><span>Nuts and snacks, made in Singapore</span></span>
+    </a>
+    <button type="button" class="order-btn" data-open-order>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.5L21 8H6"/></svg>
+      Order <span class="count" data-count data-n="0">0</span>
+    </button>
+  </header>
+
+  <div class="layout">
+    <aside class="intro">
+      <div class="hero">
+        <span class="live"><span class="dot" data-status-dot></span><span data-status>Nibbles is online</span></span>
+        <h1>Find the right snack in seconds.</h1>
+        <p>Ask in English or 中文. Nibbles knows every product, pack size and price in our range.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Nibbles can help you</h2>
+        <button type="button" class="help" data-ask="What cashews do you have?">
+          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+          <span><b>Find products</b><small>By flavour, nut type or pack size</small></span>
+        </button>
+        <button type="button" class="help" data-ask="How much are your roasted almonds?">
+          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+          <span><b>Compare prices</b><small>See price per 100g across packs</small></span>
+        </button>
+        <button type="button" class="help" data-ask="Which of your nuts are halal and gluten-free?">
+          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <span><b>Check dietary info</b><small>Halal, gluten-free and allergens</small></span>
+        </button>
+      </div>
+
+      <div class="person">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6B5A4C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <div><strong>Need a person?</strong> Our team replies 8am to 5pm, Monday to Friday. <button type="button" class="linkish" data-open-order>Leave a message</button></div>
+      </div>
+    </aside>
+
+    <section class="chat" aria-label="Chat with Nibbles">
+      <div class="chat-head">
+        <div class="who">
+          <span class="ava" aria-hidden="true">N</span>
+          <div><b>Nibbles</b><span><span class="dot" data-status-dot></span><span class="d-only">{{ company }} product assistant</span><span class="m-only">{{ company }} · online</span></span></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="ghost" data-new>New chat</button>
+          <button type="button" class="m-new" data-new aria-label="Start a new chat">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+          <button type="button" class="m-order" data-open-order aria-label="View order">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.5L21 8H6"/></svg>
+            <span class="count" data-count data-n="0">0</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="log" id="log" aria-live="polite"></div>
+
+      <form class="composer" id="composer">
+        <div class="field">
+          <label for="box" class="sr">Message Nibbles</label>
+          <input id="box" type="text" autocomplete="off" enterkeyhint="send" placeholder="Ask about a product, price or pack size">
+          <button type="submit" class="send" id="send" aria-label="Send message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <div class="fine">
+          <span>Prices in SGD per pack. Always check the pack for allergens.</span>
+          <span class="geco"><img src="/static/logo.png" alt="">Powered by GECO</span>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+</div>
+
+<dialog id="order" aria-labelledby="order-title">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="order-title">Your order request</h2>
+      <button type="button" class="x" data-close aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
     </div>
-    <div class="messages" id="messages">
-      <div class="msg bot">Hi, I'm Nibbles. Ask me about anything in our range, like "roasted peanuts 150g" or "什么腰果有蜂蜜口味", and I'll find it for you.</div>
-    </div>
-    <div class="footer">
-      <input id="box" type="text" placeholder="Enter your message..." autofocus>
-      <button id="send">Send</button>
+    <div class="dlg-body">
+      <div class="lines" id="lines"></div>
+      <div class="total" id="total-row"><span>Estimated total</span><b id="total">SGD 0.00</b></div>
+      <div class="note" id="order-note">Send this to our team and we'll confirm stock, payment and delivery by email or phone. Delivery is free on orders above SGD 50.</div>
+      <form class="form" id="lead" novalidate>
+        <label class="full">Your name<input name="name" autocomplete="name" required></label>
+        <label>Email<input name="email" type="email" autocomplete="email" inputmode="email"></label>
+        <label>Phone<input name="phone" type="tel" autocomplete="tel" inputmode="tel"></label>
+        <label class="full">Message (optional)<textarea name="note" placeholder="Anything we should know, like a delivery address or a question"></textarea></label>
+        <div class="form-err full" id="lead-err" role="alert"></div>
+        <button type="submit" class="primary full" id="lead-send">Send to our team</button>
+      </form>
     </div>
   </div>
+</dialog>
 
 <script>
-const msgs=document.getElementById('messages'), box=document.getElementById('box'),
-      send=document.getElementById('send');
-let busy=false;
-const scroll=()=>{msgs.scrollTop=msgs.scrollHeight;};
+(() => {
+const COMPANY = {{ company|tojson }};
+const log = document.getElementById('log');
+const box = document.getElementById('box');
+const sendBtn = document.getElementById('send');
+let busy = false;
 
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c =>
-    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// ---------- helpers ----------
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => 'SGD ' + Number(n).toFixed(2);
+let hold = false; // once products show, keep the start of the answer in view
+const scroll = () => { if (!hold) log.scrollTop = log.scrollHeight; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+// Plain text with **bold** only. The model is told not to use other markdown.
+const rich = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+const DIET = { halal:'Halal', gluten_free:'Gluten-free', high_fiber:'High fibre', high_fibre:'High fibre',
+  no_added_sugar:'No added sugar', vegan:'Vegan', low_salt:'Low salt', keto:'Keto' };
+const ALLERGEN = { contains_peanuts:'Contains peanuts', contains_peanut:'Contains peanuts', contains_tree_nut:'Contains tree nuts', contains_tree_nuts:'Contains tree nuts',
+  contains_gluten:'Contains gluten', contains_soy:'Contains soy', contains_sesame:'Contains sesame',
+  contains_dairy:'Contains milk', contains_fish:'Contains fish' };
+const split = s => String(s || '').split(',').map(t => t.trim()).filter(Boolean);
+const nice = (map, t) => map[t] || t.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+const per100 = it => (it.price && it.grams) ? it.price / it.grams * 100 : null;
+
+const ICON = {
+  check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>',
+  warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+};
+
+// ---------- order (kept in this browser only) ----------
+const order = (() => {
+  let lines = [];
+  try { lines = JSON.parse(localStorage.getItem('nibbles_order') || '[]'); } catch (e) {}
+  const save = () => { try { localStorage.setItem('nibbles_order', JSON.stringify(lines)); } catch (e) {} paint(); };
+  const count = () => lines.reduce((n, l) => n + l.qty, 0);
+  const paint = () => document.querySelectorAll('[data-count]').forEach(c => { const n = count(); c.textContent = n; c.dataset.n = n; });
+  return {
+    lines: () => lines, count, paint,
+    add(it) {
+      const hit = lines.find(l => l.sku === it.sku);
+      if (hit) hit.qty += 1;
+      else lines.push({ sku: it.sku, name: it.name, grams: it.grams, price: it.price, image: it.image, qty: 1 });
+      save();
+    },
+    step(sku, d) { const l = lines.find(x => x.sku === sku); if (!l) return; l.qty += d; if (l.qty <= 0) lines = lines.filter(x => x !== l); save(); },
+    clear() { lines = []; save(); },
+    total() { return lines.reduce((s, l) => s + (l.price || 0) * l.qty, 0); },
+  };
+})();
+order.paint();
+
+// ---------- rendering ----------
+function card(it, best) {
+  const c = el('article', 'card');
+  const diet = split(it.dietary_tags).slice(0, 2);
+  const allergens = split(it.allergen_tags);
+  const p = per100(it);
+  c.innerHTML =
+    `<div class="shot">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy">` : ''}` +
+      (it.grams ? `<span class="pill size">${esc(it.grams)}g</span>` : '') +
+      (best ? `<span class="pill best">Best value</span>` : '') + `</div>` +
+    `<div class="card-body"><div><h3>${esc(it.name)}</h3>` +
+      `<div class="price"><b>${esc(it.price_display || 'Price on request')}</b>` +
+      (p ? `<span>${money(p)} / 100g</span>` : '') + `</div></div>` +
+      (diet.length ? `<div class="tags">${diet.map(t => `<span class="tag">${ICON.check}${esc(nice(DIET, t))}</span>`).join('')}</div>` : '') +
+      allergens.map(t => `<div class="allergen">${ICON.warn}${esc(nice(ALLERGEN, t))}</div>`).join('') +
+      (it.price ? `<button type="button" class="add">${ICON.plus}Add to order</button>` : '') +
+    `</div>`;
+  const add = c.querySelector('.add');
+  if (add) add.addEventListener('click', () => {
+    order.add(it);
+    add.classList.add('added'); add.innerHTML = ICON.check + 'Added';
+    setTimeout(() => { add.classList.remove('added'); add.innerHTML = ICON.plus + 'Add to order'; }, 1400);
+  });
+  return c;
 }
 
-function addUser(text){
-  const el=document.createElement('div');
-  el.className='msg user'; el.textContent=text;
-  msgs.appendChild(el); scroll();
-}
-
-function addBot(){
-  const el=document.createElement('div'); el.className='msg bot cursor';
-  msgs.appendChild(el); scroll(); return el;
-}
-
-function addCards(items, label){
-  const wrap=document.createElement('div');
-  if(label){ const l=document.createElement('div'); l.className='label';
-             l.textContent=label; wrap.appendChild(l); }
-  const row=document.createElement('div'); row.className='cards';
-  for(const it of items){
-    const card=document.createElement('div'); card.className='card';
-    const size = it.grams ? (it.grams + 'g') : '';
-    const bits = [it.category, size].filter(Boolean).join(' · ');
-    let tags='';
-    (it.dietary_tags||'').split(',').filter(Boolean).slice(0,2)
-      .forEach(t => tags += `<span class="tag">${escapeHtml(t.trim())}</span>`);
-    (it.allergen_tags||'').split(',').filter(Boolean).slice(0,1)
-      .forEach(t => tags += `<span class="tag allergen">${escapeHtml(t.trim().replace(/_/g,' '))}</span>`);
-    card.innerHTML =
-      `<div class="name">${escapeHtml(it.name)}</div>`+
-      `<div class="meta">${escapeHtml(bits)}</div>`+
-      `<div class="price">${escapeHtml(it.price_display||'')}</div>`+
-      `<div>${tags}</div>`;
-    row.appendChild(card);
+function cardGrid(items, markBest) {
+  const grid = el('div', 'cards');
+  let bestSku = null;
+  if (markBest && items.length > 1) {
+    const ranked = items.filter(per100).sort((a, b) => per100(a) - per100(b));
+    if (ranked.length > 1 && per100(ranked[0]) < per100(ranked[1]) - 0.005) bestSku = ranked[0].sku;
   }
-  wrap.appendChild(row); msgs.appendChild(wrap); scroll();
+  items.forEach(it => grid.appendChild(card(it, it.sku === bestSku)));
+  return grid;
 }
 
-function getSID(){
-  try{
-    let sid=localStorage.getItem('nibbles_sid');
-    if(!sid){ sid = (crypto && crypto.randomUUID) ? crypto.randomUUID()
-                  : String(Date.now())+Math.random().toString(16).slice(2);
-              localStorage.setItem('nibbles_sid', sid); }
-    return sid;
-  }catch(e){ return 'sid-'+Date.now(); }
+function botTurn() {
+  const row = el('div', 'row');
+  row.appendChild(el('span', 'ava', 'N')).setAttribute('aria-hidden', 'true');
+  const stack = el('div', 'stack');
+  const bubble = el('div', 'bubble', '<span class="typing" aria-label="Nibbles is typing"><i></i><i></i><i></i></span>');
+  stack.appendChild(bubble);
+  row.appendChild(stack);
+  log.appendChild(row); scroll();
+  return { row, stack, bubble, text: '', items: [] };
 }
 
-async function ask(text){
-  if(busy || !text.trim()) return;
-  busy=true; send.disabled=true;
-  addUser(text); box.value='';
-  let bot=null;
+function addMe(text) { const m = log.appendChild(el('div', 'me')); m.textContent = text; scroll(); return m; }
 
-  try{
-    const res=await fetch('/chat',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({message:text, sid:getSID()})
-    });
-    if(!res.ok || !res.body) throw new Error('Sorry, something went wrong.');
+const CATEGORIES = ['Peanuts', 'Cashews', 'Almonds', 'Pistachios', 'Macadamia', 'Walnuts', 'Mixed Nuts', 'Snacks'];
+const DEFAULT_CHIPS = [
+  ['Honey cashews', 'Do you have honey cashews?'],
+  ['Small snack packs', 'What are your smallest snack packs?'],
+  ['Halal options', 'Which of your nuts are halal?'],
+  ['Delivery', 'How does delivery work?'],
+];
 
-    const reader=res.body.getReader(), dec=new TextDecoder();
-    let buffer='';
-    while(true){
-      const {value, done}=await reader.read();
-      if(done) break;
-      buffer+=dec.decode(value,{stream:true});
-      const parts=buffer.split('\n\n'); buffer=parts.pop();
-      for(const part of parts){
-        const line=part.split('\n').find(l=>l.startsWith('data:'));
-        if(!line) continue;
-        let ev; try{ ev=JSON.parse(line.slice(5).trim()); }catch(e){ continue; }
+function chipsFor(items) {
+  if (!items.length) return DEFAULT_CHIPS;
+  const cats = [...new Set(items.map(i => i.category).filter(Boolean))];
+  const cat = cats[0];
+  const lc = (cat || 'nuts').toLowerCase();
+  const largest = Math.max(...items.map(i => i.grams || 0));
+  const others = CATEGORIES.filter(c => !cats.includes(c));
+  const next = others[(cat ? cat.length : 0) % others.length];
+  const chips = [];
+  if (largest && largest < 300) chips.push(['Bigger packs', `Do you have ${lc} in a 400g pack?`]);
+  else chips.push(['Smaller packs', `Do you have ${lc} in a small snack pack?`]);
+  chips.push(['Halal only', `Which ${lc} are halal?`]);
+  if (next) chips.push([`What about ${next.toLowerCase()}?`, `What ${next.toLowerCase()} do you have?`]);
+  chips.push(['Delivery', 'How does delivery work?']);
+  return chips;
+}
 
-        if(ev.type==='items'){ addCards(ev.items); }
-        else if(ev.type==='delta'){
-          if(!bot) bot=addBot();
-          bot.textContent += ev.text; scroll();
+function showChips(where, chips) {
+  log.querySelectorAll('.chips').forEach(c => c.remove());
+  const wrap = el('div', 'chips');
+  chips.forEach(([label, ask]) => {
+    const b = el('button', 'chip'); b.type = 'button'; b.textContent = label;
+    b.addEventListener('click', () => send(ask));
+    wrap.appendChild(b);
+  });
+  where.appendChild(wrap); scroll();
+}
+
+function welcome() {
+  log.innerHTML = '';
+  const t = botTurn();
+  t.bubble.innerHTML = rich(`Hi, I'm Nibbles. Ask me about anything in our range, like "roasted peanuts 150g" or "什么腰果有蜂蜜口味", and I'll find it for you.`);
+  showChips(t.stack, DEFAULT_CHIPS);
+}
+
+function sid() {
+  try {
+    let s = localStorage.getItem('nibbles_sid');
+    if (!s) { s = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(16).slice(2)); localStorage.setItem('nibbles_sid', s); }
+    return s;
+  } catch (e) { return 'sid-' + Date.now(); }
+}
+
+// ---------- the turn ----------
+async function send(text) {
+  text = (text || '').trim();
+  if (busy || !text) return;
+  busy = true; sendBtn.disabled = true;
+  log.querySelectorAll('.chips').forEach(c => c.remove());
+  hold = false;
+  const mine = addMe(text); box.value = '';
+  const t = botTurn();
+
+  try {
+    const res = await fetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, sid: sid() }) });
+    if (!res.ok || !res.body) throw new Error('Sorry, something went wrong on our side. Please try again.');
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const part of parts) {
+        const line = part.split('\n').find(l => l.startsWith('data:'));
+        if (!line) continue;
+        let ev; try { ev = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
+        if (ev.type === 'items') {
+          t.items = ev.items || [];
+          if (t.items.length) {
+            t.stack.appendChild(cardGrid(t.items, true));
+            log.scrollTop = Math.max(0, mine.offsetTop - 16);
+            hold = true;
+          } else scroll();
+        } else if (ev.type === 'delta') {
+          t.text += ev.text;
+          t.bubble.innerHTML = rich(t.text);
+          scroll();
+        } else if (ev.type === 'suggestions' && ev.items && ev.items.length) {
+          const also = el('div', 'stack also');
+          also.appendChild(el('div', 'label', 'You may also like'));
+          also.appendChild(cardGrid(ev.items, false));
+          t.stack.appendChild(also); scroll();
         }
-        else if(ev.type==='suggestions'){ addCards(ev.items, 'You may also like'); }
-        else if(ev.type==='done'){ if(bot) bot.classList.remove('cursor'); }
       }
     }
-  }catch(err){
-    const el=document.createElement('div');
-    el.className='msg err'; el.textContent=err.message||'Network error. Please try again.';
-    msgs.appendChild(el);
-  }finally{
-    if(bot) bot.classList.remove('cursor');
-    busy=false; send.disabled=false; box.focus(); scroll();
+    if (!t.text.trim()) t.bubble.innerHTML = rich('Here is what I found in our range.');
+  } catch (err) {
+    t.bubble.classList.add('err');
+    t.bubble.textContent = err.message || 'Network error. Please try again.';
+  } finally {
+    showChips(t.stack, chipsFor(t.items));
+    busy = false; sendBtn.disabled = false;
+    if (matchMedia('(min-width: 901px)').matches) box.focus();
   }
 }
 
-send.addEventListener('click',()=>ask(box.value));
-box.addEventListener('keydown',e=>{ if(e.key==='Enter') ask(box.value); });
+document.getElementById('composer').addEventListener('submit', e => { e.preventDefault(); send(box.value); });
+document.querySelectorAll('[data-ask]').forEach(b => b.addEventListener('click', () => send(b.dataset.ask)));
+document.querySelectorAll('[data-new]').forEach(b => b.addEventListener('click', async () => {
+  if (busy) return;
+  try { await fetch('/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sid: sid() }) }); } catch (e) {}
+  welcome();
+}));
+
+// ---------- order dialog ----------
+const dlg = document.getElementById('order');
+const linesEl = document.getElementById('lines');
+const leadForm = document.getElementById('lead');
+const leadErr = document.getElementById('lead-err');
+
+function paintOrder() {
+  const lines = order.lines();
+  document.getElementById('order-title').textContent = lines.length ? 'Your order request' : 'Message our team';
+  document.getElementById('total-row').hidden = !lines.length;
+  document.getElementById('total').textContent = money(order.total());
+  linesEl.innerHTML = lines.length ? '' : '<p class="empty" style="margin:0">Your order is empty. Add products from the chat, or just send us a message.</p>';
+  lines.forEach(l => {
+    const row = el('div', 'line');
+    row.innerHTML = `${l.image ? `<img src="${esc(l.image)}" alt="">` : ''}` +
+      `<div class="nm">${esc(l.name)}<small>${money(l.price || 0)} each</small></div>` +
+      `<div class="qty"><button type="button" aria-label="One fewer ${esc(l.name)}">−</button><span>${l.qty}</span>` +
+      `<button type="button" aria-label="One more ${esc(l.name)}">+</button></div>`;
+    const [minus, plus] = row.querySelectorAll('button');
+    minus.addEventListener('click', () => { order.step(l.sku, -1); paintOrder(); });
+    plus.addEventListener('click', () => { order.step(l.sku, 1); paintOrder(); });
+    linesEl.appendChild(row);
+  });
+}
+
+document.querySelectorAll('[data-open-order]').forEach(b => b.addEventListener('click', () => {
+  leadErr.textContent = '';
+  const doneMsg = dlg.querySelector('.done-msg'); if (doneMsg) doneMsg.remove();
+  leadForm.hidden = false; document.getElementById('order-note').hidden = false;
+  paintOrder();
+  dlg.showModal();
+}));
+dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+leadForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(leadForm);
+  const name = (f.get('name') || '').trim(), email = (f.get('email') || '').trim(), phone = (f.get('phone') || '').trim();
+  if (!name) { leadErr.textContent = 'Please add your name.'; return; }
+  if (!email && !phone) { leadErr.textContent = 'Please add an email or a phone number so we can reply.'; return; }
+  const lines = order.lines();
+  const summary = lines.length
+    ? 'Order request:\n' + lines.map(l => `- ${l.qty} x ${l.name} [${l.sku}] @ ${money(l.price || 0)}`).join('\n') +
+      `\nEstimated total: ${money(order.total())}`
+    : '';
+  const note = (f.get('note') || '').trim();
+  const btn = document.getElementById('lead-send');
+  btn.disabled = true; leadErr.textContent = '';
+  try {
+    const r = await fetch('/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone, message: [summary, note && 'Note: ' + note].filter(Boolean).join('\n\n') }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || 'We could not send that. Please try again.');
+    order.clear(); leadForm.reset(); leadForm.hidden = true; document.getElementById('order-note').hidden = true;
+    linesEl.innerHTML = ''; document.getElementById('total-row').hidden = true;
+    const ok = el('div', 'done-msg'); ok.textContent = `Thanks, ${name}. Our team has your request and will get back to you during working hours.`;
+    leadForm.after(ok);
+  } catch (err) {
+    leadErr.textContent = err.message;
+  } finally { btn.disabled = false; }
+});
+
+// ---------- status ----------
+fetch('/healthz').then(r => r.json()).then(j => {
+  if (!j.ok) {
+    document.querySelectorAll('[data-status-dot]').forEach(d => d.classList.add('off'));
+    const s = document.querySelector('[data-status]'); if (s) s.textContent = 'Nibbles is busy, catalogue only';
+  }
+}).catch(() => {});
+
+welcome();
+})();
 </script>
 </body>
 </html>

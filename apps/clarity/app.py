@@ -84,6 +84,16 @@ def run_tool(name: str, arguments: str) -> Dict[str, Any]:
         return {"error": f"{name} failed: {exc}"}
 
 
+def row_count(result: Dict[str, Any]) -> Any:
+    """How many rows a tool returned, for the query chips in the page.
+    None when the result is a single summary rather than a list."""
+    for key in ("rows", "periods"):
+        value = result.get(key)
+        if isinstance(value, list):
+            return len(value)
+    return None
+
+
 def canonical_args(arguments: str) -> str:
     """Key an argument string by meaning, so key order or spacing cannot hide
     a repeat of a query that already ran this turn."""
@@ -188,7 +198,8 @@ def run_turn(user_message: str, history: List[Dict[str, Any]]) -> Iterator[str]:
                     "name": name,
                     "content": json.dumps(result, default=str),
                 })
-                yield sse("tool_done", name=name, ok="error" not in result)
+                yield sse("tool_done", name=name, ok="error" not in result,
+                          rows=row_count(result))
 
         text = "".join(answer).strip()
         if not text:
